@@ -1,35 +1,44 @@
-import { createClient, type RedisClientType } from "redis";
+import { createClient } from "redis";
+
+type RedisClient = ReturnType<typeof createClient>;
 
 declare global {
-    // prevent reload from making new clients
-    var __redisClient: RedisClientType | undefined;
+  var __redisClient: RedisClient | undefined;
+  var __redisPromise: Promise<RedisClient | null> | undefined;
 }
 
-function getRedisUrl(){
-    const url = process.env.REDIS_URL;
-    if(!url){
-        throw new Error("Missing REDIS_URL in environment (.env / .env.local)");
-    }
-    return url;
-}
+/**
+ * Returns a connected Redis client, or null if REDIS_URL isn't set
+ * or Redis isn't reachable. Never throws.
+ */
+export async function getRedis(): Promise<RedisClient | null> {
+  const url = process.env.REDIS_URL;
+  if (!url) return null;
 
-export const redis: RedisClientType = 
-    global.__redisClient ??
-    createClient({
-        url: getRedisUrl(),
-    });
+  if (global.__redisClient) return global.__redisClient;
+  if (global.__redisPromise) return global.__redisPromise;
 
+  const client = createClient({ url });
 
-if (!global.__redisClient) {
-  global.__redisClient = redis;
-
-  redis.on("error", (err) => {
+  client.on("error", (err) => {
     console.error("[redis] error", err);
   });
 
-  // Connect once 
-  redis
+  global.__redisPromise = client
     .connect()
-    .then(() => console.log("[redis] connected"))
-    .catch((e) => console.error("[redis] connect failed", e));
+    .then(() => {
+      global.__redisClient = client;
+      console.log("[redis] connected");
+      return client;
+    })
+    .catch((e) => {
+      console.error("[redis] connect failed (caching disabled)", e);
+      global.__redisPromise = undefined;
+      try {
+        client.disconnect();
+      } catch {}
+      return null;
+    });
+
+  return global.__redisPromise;
 }

@@ -5,7 +5,8 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-import { redis } from "@/lib/redis";
+import { getRedis } from "@/lib/redis";
+import { get } from "http";
 
 async function requireUserId() {
   const session = await getServerSession(authOptions);
@@ -13,48 +14,10 @@ async function requireUserId() {
   return id ?? null;
 }
 
-const ITEMS_TLL_SECONDS = 60 *5;
+const ITEMS_TTL_SECONDS = 60 *5;
+
 function itemsCacheKey(userId: string, itineraryId: string){
     return `itineraryItems:v1:user=${userId}:itinerary=${itineraryId}`;
-}
-
-async function cacheGetJSON<T>(key: string): Promise<T | null> {
-    if (!redis){
-        return null;
-    }
-    const raw = await (redis as any).get(key);
-    if (!raw){
-        return null;
-    }
-    return typeof raw === "string" ? (JSON.parse(raw) as T): (raw as T);
-}
-
-async function cacheSetJson(key: string, value: unknown, ttlSeconds: number) {
-    if (!redis){
-        return;
-    }
-
-    const payload = JSON.stringify(value);
-    try{
-        await (redis as any).set(key, payload, { ex: ttlSeconds});
-        return;
-    }catch{}
-    try{
-        await (redis as any).set(key, payload, { EX: ttlSeconds});
-        return;
-    }catch{}
-    try{
-        await (redis as any).set(key, payload, "EX", ttlSeconds);
-        return;
-    }catch{}
-
-    //fallback
-    await (redis as any).set(key, payload);
-}
-
-async function cacheDel(key: string) {
-    if (!redis){return}
-    await (redis as any).del(key);
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }>}) {
@@ -63,11 +26,16 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }>})
 
   const { id } = await ctx.params;
   const key = itemsCacheKey(userId, id);
+  const r1 = await getRedis();
 
-  // try cache first
-  const cached = await cacheGetJSON<any[]>(key);
-  if (cached){
-    return NextResponse.json(cached, { headers: { "x-cache": "HIT"}});
+    // cache lookup
+  if (r1) {
+    try {
+        const hit = await r1.get(key);
+        if (hit) {
+        return NextResponse.json(JSON.parse(hit), { headers: { "x-cache": "HIT" } });
+        }
+    } catch {}
   }
 
   // Make sure itinerary belongs to user (miss case)
@@ -80,9 +48,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }>})
     orderBy: [{ dayIndex: "asc" }, { order: "asc" }],
   });
 
-  await cacheSetJson(key, items, ITEMS_TLL_SECONDS);
+  // write to cache
+  const r2 = await getRedis();
+  if (r2) {
+    r2.set(key, JSON.stringify(items), { EX: ITEMS_TTL_SECONDS }).catch(() => {});
+  }
 
-  return NextResponse.json(items, { headers: { "x-cache": "MISS"}});
+  return NextResponse.json(items, { headers: { "x-cache": r2 ? "MISS" : "BYPASS" } });
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }>}) {
@@ -116,14 +88,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }>}
             { status: 400 }
         );
     }
-
     if (!Number.isInteger(dayIndex)) {
         return NextResponse.json({ error: "dayIndex required" }, { status: 400 });
     }
     if (dayIndex < 0 || dayIndex >= itinerary.daysCount) {
         return NextResponse.json({ error: "Invalid dayIndex" }, { status: 400 });
     }
-
 
     // append to end of that day
     const last = await prisma.itineraryItem.findFirst({
@@ -148,7 +118,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }>}
             },
         include: { place: true },
     });
-    await cacheDel(itemsCacheKey(userId, id));
+    const r = await getRedis();
+    if (r){
+        r.del(itemsCacheKey(userId, id)).catch(() => {});
+    }
 
     return NextResponse.json(created);
 }
@@ -175,7 +148,10 @@ export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }
         where: { id: itemId, itineraryId: id },
     });
 
-    await cacheDel(itemsCacheKey(userId, id));
+    const r = await getRedis();
+    if (r){
+        r.del(itemsCacheKey(userId, id)).catch(() => {});
+    }
 
     return NextResponse.json({ ok: true });
 }

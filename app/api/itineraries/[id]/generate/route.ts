@@ -5,6 +5,11 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import next from "next";
+import { getRedis } from "@/lib/redis";
+
+function itemsCacheKey(userId: string, itineraryId: string) {
+  return `itineraryItems:v1:user=${userId}:itinerary=${itineraryId}`;
+}
 
 async function requireUserId() {
     const session = await getServerSession(authOptions);
@@ -15,7 +20,7 @@ async function requireUserId() {
 type P = {
     id: string;
     lat?: number | null;
-    long?: number | null;
+    lon?: number | null;
     category?: string | null;
     name: string
 };
@@ -27,9 +32,9 @@ type GenerateBody = {
     shuffle?: boolean;
 }
 
-function dist2(a: { lat: number; long: number}, b: { lat: number; long: number}){
+function dist2(a: { lat: number; lon: number}, b: { lat: number; lon: number}){
     const dx = a.lat - b.lat;
-    const dy = a.long = b.long;
+    const dy = a.lon - b.lon;
     return (dx * dx) + (dy * dy);
 }
 // 1) if we have the coordinates, sweep cluster angle around the center, then chunk into days
@@ -37,23 +42,23 @@ function dist2(a: { lat: number; long: number}, b: { lat: number; long: number})
 
 function assignDays(places: P[], daysCount: number): P[][] {
     const withCoords = places.filter(
-        (p) => typeof p.lat == "number" && typeof p.long) as Array<P & { lat: number; long: number}>;
+        (p) => typeof p.lat == "number" && typeof p.lon) as Array<P & { lat: number; lon: number}>;
     
     const buckets: P[][] = Array.from({ length: daysCount}, () => []);
 
     if (withCoords.length >=2){
         const meanLat = withCoords.reduce((s,p) => s + p.lat, 0) / withCoords.length;
-        const meanLon = withCoords.reduce((s,p) => s + p.long, 0) / withCoords.length;
+        const meanLon = withCoords.reduce((s,p) => s + p.lon, 0) / withCoords.length;
 
         const sorted = [...withCoords].sort((a,b) => {
-            const aa = Math.atan2(a.lat - meanLat, a.long - meanLon);
-            const bb = Math.atan2(b.lat - meanLat, b.long - meanLon);
+            const aa = Math.atan2(a.lat - meanLat, a.lon - meanLon);
+            const bb = Math.atan2(b.lat - meanLat, b.lon - meanLon);
             return aa - bb;
         });
         // chunk evenly=>
         sorted.forEach((p, i) => buckets[i%daysCount].push(p))
 
-        const noCoords = places.filter((p) => !(typeof p.lat == "number" && typeof p.long == "number"));
+        const noCoords = places.filter((p) => !(typeof p.lat == "number" && typeof p.lon == "number"));
         noCoords.forEach((p,i) => buckets[i%daysCount].push(p));
 
         return buckets;
@@ -74,8 +79,8 @@ function assignDays(places: P[], daysCount: number): P[][] {
 
 function orderWithinDay(day: P[]): P[]{
     const pts = day.filter(
-        (p) => typeof p.lat === "number" && typeof p.long === "number") as Array<P & { lat: number; long: number }>;
-    const rest = day.filter((p) => typeof p.lat === "number" && typeof p.long === "number");
+        (p) => typeof p.lat === "number" && typeof p.lon === "number") as Array<P & { lat: number; lon: number }>;
+    const rest = day.filter((p) => !(typeof p.lat === "number" && typeof p.lon === "number"));
 
     if (pts.length <= 2){
         return [...pts, ...rest];
@@ -216,6 +221,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         }
         return out;
     });
+
+    try {
+        const r = await getRedis();
+        if (r) await r.del(itemsCacheKey(userId, id));
+    } catch {}
 
     return NextResponse.json({
         ok: true,

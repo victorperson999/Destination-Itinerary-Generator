@@ -5,7 +5,8 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
-import { redis } from "@lib/redis";
+import { getRedis } from "@/lib/redis";
+import { AwardIcon } from "lucide-react";
 
 async function requireUserId() {
   const session = await getServerSession(authOptions);
@@ -29,15 +30,25 @@ export async function GET() {
 
   const key = savedCacheKey(userId);
   // redis lookup:
-  try{
-    const hit = await redis.get(key);
-    if (hit){
-      const parsed = JSON.parse(hit);
-      return NextResponse.json(parsed, { headers: { "x-cache": "HIT"} });
+  // redis lookup:
+try {
+  const r = await getRedis();
+  if (r) {
+    const cached = await r.get(key);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        return NextResponse.json(parsed, { headers: { "x-cache": "HIT" } });
+      } catch {
+        // cache is corrupted / old format: delete and fall through to DB
+        await r.del(key);
+      }
     }
-  }catch {
-    // do nothing, just fall through to DB implementation
   }
+} catch {
+  // ignore and fall through to DB
+}
+
   // DB query (MISS)
   const saved = await prisma.savedPlace.findMany({
     where: { savedById: userId },
@@ -61,11 +72,14 @@ export async function GET() {
 
   // write to cache
   try {
-    await redis.set(key, JSON.stringify(payload), { EX: SAVED_TTL_SECONDS });
+    const r = await getRedis();
+    if (r){
+      await r.set(key, JSON.stringify(payload), { EX: SAVED_TTL_SECONDS });
+    }
   } catch{
     // ignore cache fails for now...:(
   }
-  
+  return NextResponse.json(payload, { headers: {"x-cache": "MISS"}});
 }
 
 export async function POST(req: Request) {
@@ -111,13 +125,15 @@ export async function POST(req: Request) {
     update: {},
     create: { savedById: userId, placeId: place.id },
   });
-
+  // invalidate cache
   try {
-    await redis.del(savedCacheKey(userId));
+    const r = await getRedis();
+    if (r){
+      await r.del(savedCacheKey(userId));
+    }
   } catch {
     //...
   }
-
   return NextResponse.json({ ok: true, placeId: place.id });
 }
 
@@ -140,11 +156,11 @@ export async function DELETE(req: Request) {
     });
     
     try{
-      await redis.del(savedCacheKey(userId));
-    }catch{
-      //
-    }
-
+      const r = await getRedis();
+      if (r){
+        await r.del(savedCacheKey(userId));
+      }
+    }catch{}
   return NextResponse.json({ ok: true, deleted: deleted.count });
   }
 
@@ -158,11 +174,11 @@ export async function DELETE(req: Request) {
   });
 
   try {
-    await redis.del(savedCacheKey(userId));
-  }catch{
-    
-  }
+    const r = await getRedis();
+    if (r){
+      await r.del(savedCacheKey(userId));
+    }
+  }catch{}
 
   return NextResponse.json({ ok: true });
-
 }

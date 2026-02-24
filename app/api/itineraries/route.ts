@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-import { redis } from "@/lib/redis";
+import { getRedis } from "@/lib/redis";
 
 function itinerariesCacheKey(userId: string){
   return `itineraries:v1:user:${userId}`;
@@ -23,16 +23,18 @@ export async function GET() {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const key = itinerariesCacheKey(userId);
-
+  const r = await getRedis();
   // cache lookup
-  try{
-    const hit = await redis.get(key);
+  if (r){
+    try{
+    const hit = await r.get(key);
     if (hit){
       const parsed = JSON.parse(hit);
       return NextResponse.json(parsed, { headers: { "x-cache": "HIT"}});
     }
-  }catch{
+    }catch{
       // ignore and fall to DB
+    }
   }
 
   // DB lookup
@@ -42,11 +44,13 @@ export async function GET() {
   });
 
   //write to cache
-  try{
-    await redis.set(key, JSON.stringify(itineraries), { EX: ITINERARIES_TTL_SECONDS});
-  } catch {}
+  if (r) {
+    r.set(key, JSON.stringify(itineraries), { EX: ITINERARIES_TTL_SECONDS }).catch(() => {});
+  }
 
-  return NextResponse.json(itineraries);
+  return NextResponse.json(itineraries, {
+    headers: { "x-cache": r ? "MISS" : "BYPASS" },
+  });
 }
 
 export async function POST(req: Request) {
@@ -63,9 +67,10 @@ export async function POST(req: Request) {
       data: { userId, title, daysCount, startDate },
     });
 
-    try{
-      await redis.del(itinerariesCacheKey(userId))
-    } catch {}
+    const r = await getRedis();
+    if (r){
+      r.del(itinerariesCacheKey(userId)).catch(() => {});
+    }
     
     return NextResponse.json(created);
 
