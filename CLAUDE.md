@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Workflow Rules
+
+- **Plan before code**: For every coding task, present a written plan (files to change, approach, edge cases) and wait for explicit user approval before writing any code.
+- **Show your changes**: After writing code, summarize every file that was modified and what changed in each.
+
 ## Commands
 
 ```bash
