@@ -10,6 +10,8 @@ import { Separator } from "@/components/ui/separator";
 import { useSession, signIn } from "next-auth/react";
 import AuthButton from "@/components/explorer/auth-button";
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type SavedItem = {
   placeId: string;
   provider: string;
@@ -48,19 +50,29 @@ type ItineraryItem = {
   };
 };
 
+type PlaceResult = {
+  provider: "mock" | "osm";
+  providerId: string;
+  name: string;
+  address: string;
+  category?: string;
+  lat?: number;
+  lon?: number;
+};
+
+// ── API helpers ───────────────────────────────────────────────────────────────
+
 async function fetchSaved(): Promise<SavedItem[]> {
   const res = await fetch("/api/saved", { cache: "no-store" });
-  if (res.status === 401) return []; // not signed in yet
-  if(!res.ok){
-    throw new Error("Failed to load saved places")
-  }
+  if (res.status === 401) return [];
+  if (!res.ok) throw new Error("Failed to load saved places");
   return res.json();
 }
 
 async function savePlace(p: PlaceResult) {
   const res = await fetch("/api/saved", {
     method: "POST",
-    headers: {"Content-Type": "application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       provider: p.provider,
       providerId: p.providerId,
@@ -69,12 +81,9 @@ async function savePlace(p: PlaceResult) {
       category: p.category,
       lat: p.lat ?? null,
       lon: p.lon ?? null,
-
     }),
   });
-  if(!res.ok){
-    throw new Error("Failed to save place");
-  }
+  if (!res.ok) throw new Error("Failed to save place");
 }
 
 async function removePlace(placeId: string) {
@@ -83,342 +92,380 @@ async function removePlace(placeId: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ placeId }),
   });
-  if(!res.ok){
-    throw new Error("Failed to remove place");
-  }
+  if (!res.ok) throw new Error("Failed to remove place");
 }
 
-async function removeAllSaved(){
-   const res = await fetch("/api/saved", {
+async function removeAllSaved() {
+  const res = await fetch("/api/saved", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     cache: "no-store",
     body: JSON.stringify({ all: true }),
   });
-
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`Failed to remove all saved: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
   }
-
   return res.json();
 }
 
-type PlaceResult = {
-    provider: "mock" | "osm";
-    providerId: string;
-    name: string;
-    address: string;
-    category?: string;
-    lat?: number;
-    lon?: number;
+async function fetchItineraries(): Promise<Itinerary[]> {
+  const res = await fetch("/api/itineraries", { cache: "no-store" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to load itineraries: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+  return (await res.json()) as Itinerary[];
+}
+
+async function createItinerary(title: string, daysCount: number): Promise<Itinerary> {
+  const res = await fetch("/api/itineraries", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ title, daysCount }),
+  });
+
+  if (res.status === 409) {
+    const data = await res.json().catch(() => null);
+    const msg =
+      typeof data?.error === "string"
+        ? data.error
+        : "Itinerary with this name already exists";
+    throw Object.assign(new Error(msg), { status: 409, code: "DUPLICATE_ITINERARY" });
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to create itinerary: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+  return (await res.json()) as Itinerary;
+}
+
+async function fetchItineraryItems(id: string): Promise<ItineraryItem[]> {
+  const res = await fetch(`/api/itineraries/${encodeURIComponent(id)}/items`, { cache: "no-store" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to load itinerary items: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+  return (await res.json()) as ItineraryItem[];
+}
+
+async function generateItinerary(id: string, body?: unknown) {
+  const res = await fetch(`/api/itineraries/${encodeURIComponent(id)}/generate`, {
+    method: "POST",
+    cache: "no-store",
+    headers: body ? { "Content-Type": "application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to generate itinerary: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+async function removeItineraryItem(itinId: string, itemId: string) {
+  const res = await fetch(`/api/itineraries/${encodeURIComponent(itinId)}/items`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ itemId }),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to remove item: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+  return res.json();
+}
+
+// ── SearchResultsList ─────────────────────────────────────────────────────────
+
+type SearchResultsListProps = {
+  results: PlaceResult[];
+  savedKeys: Set<string>;
+  savingKey: string | null;
+  query: string;
+  onSave: (r: PlaceResult) => Promise<void>;
 };
 
+function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: SearchResultsListProps) {
+  if (results.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        search for a city to see its nearby attractions.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        Showing {results.length} results for <span className="font-medium">{query.trim()}</span>
+      </p>
+      <ul className="space-y-2">
+        {results.map((r) => (
+          <li key={r.providerId} className="rounded-lg border p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="font-medium">{r.name}</p>
+                <p className="text-sm text-muted-foreground">{r.address}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {r.category ? <Badge variant="secondary">{r.category}</Badge> : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={savedKeys.has(`${r.provider}:${r.providerId}`) ? "secondary" : "default"}
+                  disabled={savingKey === `${r.provider}:${r.providerId}`}
+                  onClick={() => void onSave(r)}
+                >
+                  {savedKeys.has(`${r.provider}:${r.providerId}`) ? "Saved" : "Save"}
+                </Button>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ── SearchPanel ───────────────────────────────────────────────────────────────
 
 export default function SearchPanel() {
-    const [query, setQuery] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [results, setResults] = useState<PlaceResult[]>([]);
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState<PlaceResult[]>([]);
 
-    const [saved, setSaved] = useState<SavedItem[]>([]);
-    const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [saved, setSaved] = useState<SavedItem[]>([]);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
 
-    const [savedLoading, setSavedLoading] = useState(true);
-    const [savedError, setSavedError] = useState<string | null>(null);
+  const [savedLoading, setSavedLoading] = useState(true);
+  const [savedError, setSavedError] = useState<string | null>(null);
 
-    const [selectedSavedIds, setSelectedSavedIds] = useState<Set<string>>(new Set());
-    const [genShuffle, setGenShuffle] = useState(false);
+  const [selectedSavedIds, setSelectedSavedIds] = useState<Set<string>>(new Set());
+  const [genShuffle, setGenShuffle] = useState(false);
 
-    const [itineraries, setItineraries] = useState<Itinerary[]>([]);
-    const [itineraryId, setItineraryId] = useState<string | null>(null);
+  const [itineraries, setItineraries] = useState<Itinerary[]>([]);
+  const [itineraryId, setItineraryId] = useState<string | null>(null);
 
-    const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
-    const [itinLoading, setItinLoading] = useState(false);
-    const [itinError, setItinError] = useState<string | null>(null);
+  const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
+  const [itinLoading, setItinLoading] = useState(false);
+  const [itinError, setItinError] = useState<string | null>(null);
 
-    const [itemsLoading, setItemsLoading] = useState(false);
-    const [itemsError, setItemsError] = useState<string | null>(null);
+  const [itemsLoading, setItemsLoading] = useState(false);
+  const [itemsError, setItemsError] = useState<string | null>(null);
 
-    const [creatingItin, setCreatingItin] = useState(false);
-    const [generating, setGenerating] = useState(false);
+  const [creatingItin, setCreatingItin] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
-    const [newItinTitle, setNewItinTitle] = useState("My Trip");
-    const [newDaysCount, setNewDaysCount] = useState(3);
-    const [newItinTitleError, setNewItinTitleError] = useState<string | null>(null);
+  const [newItinTitle, setNewItinTitle] = useState("My Trip");
+  const [newDaysCount, setNewDaysCount] = useState(3);
+  const [newItinTitleError, setNewItinTitleError] = useState<string | null>(null);
 
+  const { status } = useSession();
+  const authed = status === "authenticated";
 
+  const canSearch = useMemo(() => query.trim().length > 0 && !loading, [query, loading]);
 
-    const { status } = useSession();
-    const authed = status === "authenticated";
+  const selectedSavedCount = selectedSavedIds.size;
 
-    const canSearch = useMemo(() => query.trim().length > 0 && !loading, [query, loading] );
+  const selectedSavedIdArray = useMemo(
+    () => Array.from(selectedSavedIds),
+    [selectedSavedIds]
+  );
 
-    const selectedSavedCount = selectedSavedIds.size;
+  const savedKeys = useMemo(
+    () => new Set(saved.map((s) => `${s.provider}:${s.providerId}`)),
+    [saved]
+  );
 
-    const selectedSavedIdArray = useMemo(
-      () => Array.from(selectedSavedIds),
-      [selectedSavedIds]
-    );
-
-    const savedKeys = useMemo(
-      () => new Set(saved.map((s) => `${s.provider}:${s.providerId}`)),
-      [saved]
-    );
-
-    const selectedItinerary = useMemo(
+  const selectedItinerary = useMemo(
     () => itineraries.find((i) => i.id === itineraryId) ?? null,
     [itineraries, itineraryId]
-    );
+  );
 
-    const itemsByDay = useMemo(() => {
-      const map = new Map<number, ItineraryItem[]>();
-      for (const item of itineraryItems) {
-        const arr = map.get(item.dayIndex) ?? [];
-        arr.push(item);
-        map.set(item.dayIndex, arr);
-      }
-      for (const [day, arr] of map.entries()) {
-        arr.sort((a, b) => a.order - b.order);
-        map.set(day, arr);
-      }
-      return map;
-    }, [itineraryItems]);
-
-    const titleAlreadyExists = useMemo(() => {
-      const t = newItinTitle.trim().toLowerCase();
-      if (!t) return false;
-      return itineraries.some((it) => it.title.trim().toLowerCase() === t);
-    }, [itineraries, newItinTitle]);
-
-
-    useEffect(() => {
-      // if saved list changes (remove/refresh), drop ids that no longer exist
-      setSelectedSavedIds((prev) => {
-        const allowed = new Set(saved.map((s) => s.placeId));
-        const next = new Set<string>();
-        for (const id of prev) if (allowed.has(id)) next.add(id);
-        return next;
-      });
-    }, [saved]);
-
-    useEffect(() => {
-      let cancelled = false;
-
-      async function loadItins() {
-        if (!authed) {
-          setItineraries([]);
-          setItineraryId(null);
-          setItineraryItems([]);
-          setItinError(null);
-          setItemsError(null);
-          setItinLoading(false);
-          setItemsLoading(false);
-          return;
-        }
-
-        try {
-          setItinLoading(true);
-          setItinError(null);
-          const list = await fetchItineraries();
-          if (cancelled) return;
-
-          setItineraries(list);
-
-          // pick first itinerary if none selected
-          if (!itineraryId && list.length > 0) {
-            setItineraryId(list[0].id);
-          }
-        } catch (e) {
-          if (!cancelled) {
-            setItinError(e instanceof Error ? e.message : "Failed to load itineraries");
-          }
-        } finally {
-          if (!cancelled) setItinLoading(false);
-        }
-      }
-
-      void loadItins();
-      return () => {
-        cancelled = true;
-      };
-      // IMPORTANT: include itineraryId so we don't overwrite user selection incorrectly
-    }, [authed, itineraryId]);
-
-    useEffect(() => {
-      let cancelled = false;
-
-      async function loadItems() {
-        if (!authed || !itineraryId) {
-          setItineraryItems([]);
-          setItemsError(null);
-          setItemsLoading(false);
-          return;
-        }
-
-        try {
-          setItemsLoading(true);
-          setItemsError(null);
-          const items = await fetchItineraryItems(itineraryId);
-          if (!cancelled) setItineraryItems(items);
-        } catch (e) {
-          if (!cancelled) {
-            setItemsError(e instanceof Error ? e.message : "Failed to load itinerary items");
-          }
-        } finally {
-          if (!cancelled) setItemsLoading(false);
-        }
-      }
-
-      void loadItems();
-      return () => {
-        cancelled = true;
-      };
-    }, [authed, itineraryId]);
-
-    function toggleSavedSelection(placeId: string) {
-      setSelectedSavedIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(placeId)) next.delete(placeId);
-        else next.add(placeId);
-        return next;
-      });
+  const itemsByDay = useMemo(() => {
+    const map = new Map<number, ItineraryItem[]>();
+    for (const item of itineraryItems) {
+      const arr = map.get(item.dayIndex) ?? [];
+      arr.push(item);
+      map.set(item.dayIndex, arr);
     }
-
-    function selectAllSaved() {
-      setSelectedSavedIds(new Set(saved.map((s) => s.placeId)));
+    for (const [day, arr] of map.entries()) {
+      arr.sort((a, b) => a.order - b.order);
+      map.set(day, arr);
     }
+    return map;
+  }, [itineraryItems]);
 
-    function clearSelectedSaved() {
-      setSelectedSavedIds(new Set());
-    }
+  const titleAlreadyExists = useMemo(() => {
+    const t = newItinTitle.trim().toLowerCase();
+    if (!t) return false;
+    return itineraries.some((it) => it.title.trim().toLowerCase() === t);
+  }, [itineraries, newItinTitle]);
 
-    async function refreshSaved() {
+  useEffect(() => {
+    setSelectedSavedIds((prev) => {
+      const allowed = new Set(saved.map((s) => s.placeId));
+      const next = new Set<string>();
+      for (const id of prev) if (allowed.has(id)) next.add(id);
+      return next;
+    });
+  }, [saved]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadItins() {
+      if (!authed) {
+        setItineraries([]);
+        setItineraryId(null);
+        setItineraryItems([]);
+        setItinError(null);
+        setItemsError(null);
+        setItinLoading(false);
+        setItemsLoading(false);
+        return;
+      }
+
       try {
-        setSavedLoading(true);
-        setSavedError(null);
-        setSaved(await fetchSaved());
-      } catch (e){
-        setSavedError(e instanceof Error? e.message: "Failed to load saved places");
+        setItinLoading(true);
+        setItinError(null);
+        const list = await fetchItineraries();
+        if (cancelled) return;
+
+        setItineraries(list);
+
+        if (!itineraryId && list.length > 0) {
+          setItineraryId(list[0].id);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setItinError(e instanceof Error ? e.message : "Failed to load itineraries");
+        }
       } finally {
-        setSavedLoading(false);
+        if (!cancelled) setItinLoading(false);
       }
-      
     }
 
-    async function onSearch() {
-        const q = query.trim();
+    void loadItins();
+    return () => {
+      cancelled = true;
+    };
+    // IMPORTANT: include itineraryId so we don't overwrite user selection incorrectly
+  }, [authed, itineraryId]);
 
-        if (!q) {
-            setError("Enter a city or name of neighbourhood (e.g. Toronto)");
-            setResults([]);
-            return;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadItems() {
+      if (!authed || !itineraryId) {
+        setItineraryItems([]);
+        setItemsError(null);
+        setItemsLoading(false);
+        return;
+      }
+
+      try {
+        setItemsLoading(true);
+        setItemsError(null);
+        const items = await fetchItineraryItems(itineraryId);
+        if (!cancelled) setItineraryItems(items);
+      } catch (e) {
+        if (!cancelled) {
+          setItemsError(e instanceof Error ? e.message : "Failed to load itinerary items");
         }
-        setError(null);
-        setLoading(true);
-        setResults([]);
-
-
-        try {
-          const res = await fetch(`/api/places?q=${encodeURIComponent(q)}`, {
-            cache: "no-store",
-          });
-
-          if (!res.ok) {
-            const text = await res.text().catch(() => "");
-            throw new Error(`Failed to fetch places: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
-          }
-
-          const data = (await res.json()) as PlaceResult[];
-          setResults(data);
-        } catch (e) {
-          setError(e instanceof Error ? e.message : "Search failed");
-          setResults([]);
-        } finally {
-          setLoading(false);
-        }
-
-    }
-
-    async function fetchItineraries(): Promise<Itinerary[]> {
-    const res = await fetch("/api/itineraries", { cache: "no-store" });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Failed to load itineraries: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
-    }
-    return (await res.json()) as Itinerary[];
-    }
-
-    async function createItinerary(title: string, daysCount: number): Promise<Itinerary> {
-      const res = await fetch("/api/itineraries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({ title, daysCount }),
-      });
-
-      // Handle duplicate name from backend
-      if (res.status === 409) {
-        const data = await res.json().catch(() => null);
-        const msg =
-          typeof data?.error === "string"
-            ? data.error
-            : "Itinerary with this name already exists";
-
-        throw Object.assign(new Error(msg), { status: 409, code: "DUPLICATE_ITINERARY" });
+      } finally {
+        if (!cancelled) setItemsLoading(false);
       }
+    }
 
+    void loadItems();
+    return () => {
+      cancelled = true;
+    };
+  }, [authed, itineraryId]);
+
+  function toggleSavedSelection(placeId: string) {
+    setSelectedSavedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(placeId)) next.delete(placeId);
+      else next.add(placeId);
+      return next;
+    });
+  }
+
+  function selectAllSaved() {
+    setSelectedSavedIds(new Set(saved.map((s) => s.placeId)));
+  }
+
+  function clearSelectedSaved() {
+    setSelectedSavedIds(new Set());
+  }
+
+  async function refreshSaved() {
+    try {
+      setSavedLoading(true);
+      setSavedError(null);
+      setSaved(await fetchSaved());
+    } catch (e) {
+      setSavedError(e instanceof Error ? e.message : "Failed to load saved places");
+    } finally {
+      setSavedLoading(false);
+    }
+  }
+
+  async function onSearch() {
+    const q = query.trim();
+    if (!q) {
+      setError("Enter a city or name of neighbourhood (e.g. Toronto)");
+      setResults([]);
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    setResults([]);
+
+    try {
+      const res = await fetch(`/api/places?q=${encodeURIComponent(q)}`, {
+        cache: "no-store",
+      });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
-        throw new Error(`Failed to create itinerary: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+        throw new Error(`Failed to fetch places: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
       }
-      return (await res.json()) as Itinerary;
+      const data = (await res.json()) as PlaceResult[];
+      setResults(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Search failed");
+      setResults([]);
+    } finally {
+      setLoading(false);
     }
+  }
 
-    async function fetchItineraryItems(id: string): Promise<ItineraryItem[]> {
-    const res = await fetch(`/api/itineraries/${encodeURIComponent(id)}/items`, { cache: "no-store" });
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Failed to load itinerary items: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  async function handleSavePlace(r: PlaceResult) {
+    if (!authed) {
+      void signIn("github");
+      return;
     }
-    return (await res.json()) as ItineraryItem[];
+    const key = `${r.provider}:${r.providerId}`;
+    try {
+      setSavingKey(key);
+      await savePlace(r);
+      await refreshSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save place");
+    } finally {
+      setSavingKey(null);
     }
+  }
 
-    async function generateItinerary(id: string, body?: unknown) {
-      const res = await fetch(`/api/itineraries/${encodeURIComponent(id)}/generate`, {
-        method: "POST",
-        cache: "no-store",
-        headers: body ? { "Content-Type": "application/json" } : undefined,
-        body: body ? JSON.stringify(body) : undefined,
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Failed to generate itinerary: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
-      }
-
-      return res.json();
-    }
-
-    async function removeItineraryItem(itinId: string, itemId: string) {
-      const res = await fetch(`/api/itineraries/${encodeURIComponent(itinId)}/items`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        cache: "no-store",
-        body: JSON.stringify({ itemId }),
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Failed to remove item: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
-      }
-
-      return res.json();
-    }
-
-    return (
+  return (
     <Card className="w-full">
-
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -450,72 +497,65 @@ export default function SearchPanel() {
 
         <Separator />
 
+        {/* Saved section */}
         <div className="space-y-2">
-          
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-medium">
-            Saved{" "}
-            <span className="text-xs text-muted-foreground">
-              ({selectedSavedCount} selected)
-            </span>
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-medium">
+              Saved{" "}
+              <span className="text-xs text-muted-foreground">
+                ({selectedSavedCount} selected)
+              </span>
+            </p>
 
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={!authed || saved.length === 0}
-              onClick={selectAllSaved}
-            >
-              Select all
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!authed || saved.length === 0}
+                onClick={selectAllSaved}
+              >
+                Select all
+              </Button>
 
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={!authed || selectedSavedCount === 0}
-              onClick={clearSelectedSaved}
-            >
-              Clear Selected
-            </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={!authed || selectedSavedCount === 0}
+                onClick={clearSelectedSaved}
+              >
+                Clear Selected
+              </Button>
 
-            <Button
-              type="button"
-              size="sm"
-              variant="destructive"
-              disabled={!authed || saved.length === 0 || savingKey === "remove-all"}
-              onClick={async () => {
-                if (!authed) {
-                  void signIn("github");
-                  return;
-                }
-
-                const ok = window.confirm("Remove ALL saved places? This cannot be undone.");
-                if (!ok) return;
-
-                try {
-                  setSavingKey("remove-all");
-                  await removeAllSaved();
-
-                  // clear selection immediately + refresh list
-                  setSelectedSavedIds(new Set());
-                  await refreshSaved();
-                } catch (e) {
-                  setError(e instanceof Error ? e.message : "Failed to remove all saved places");
-                } finally {
-                  setSavingKey(null);
-                }
-              }}
-            >
-              Remove all
-            </Button>
-
-
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                disabled={!authed || saved.length === 0 || savingKey === "remove-all"}
+                onClick={async () => {
+                  if (!authed) {
+                    void signIn("github");
+                    return;
+                  }
+                  const ok = window.confirm("Remove ALL saved places? This cannot be undone.");
+                  if (!ok) return;
+                  try {
+                    setSavingKey("remove-all");
+                    await removeAllSaved();
+                    setSelectedSavedIds(new Set());
+                    await refreshSaved();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : "Failed to remove all saved places");
+                  } finally {
+                    setSavingKey(null);
+                  }
+                }}
+              >
+                Remove all
+              </Button>
+            </div>
           </div>
-        </div>
-  
 
           {savedLoading ? (
             <p className="text-sm text-muted-foreground">Loading saved…</p>
@@ -528,70 +568,53 @@ export default function SearchPanel() {
               {saved.map((s) => (
                 <li key={s.placeId} className="rounded-lg border p-3">
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-medium">{s.name}</p>
-                      {s.address ? (
-                        <p className="text-sm text-muted-foreground">{s.address}</p>
-                      ) : null}
-                    </div>
-                    
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          className="mt-1 h-4 w-4"
-                          checked={selectedSavedIds.has(s.placeId)}
-                          onChange={() => toggleSavedSelection(s.placeId)}
-                          disabled={!authed}
-                          aria-label={`Select ${s.name}`}
-                        />
-
-                        <div>
-                          <p className="font-medium">{s.name}</p>
-                          {s.address ? (
-                            <p className="text-sm text-muted-foreground">{s.address}</p>
-                          ) : null}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {s.category ? <Badge variant="secondary">{s.category}</Badge> : null}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={!authed || savingKey === `remove:${s.placeId}`}
-                          onClick={async () => {
-                            if (!authed) {
-                              void signIn("github");
-                              return;
-                            }
-
-                            try {
-                              setSavingKey(`remove:${s.placeId}`);
-                              await removePlace(s.placeId);
-
-                              // also drop it from selection immediately
-                              setSelectedSavedIds((prev) => {
-                                const next = new Set(prev);
-                                next.delete(s.placeId);
-                                return next;
-                              });
-
-                              await refreshSaved();
-                            } catch (e) {
-                              setError(e instanceof Error ? e.message : "Failed to remove place");
-                            } finally {
-                              setSavingKey(null);
-                            }
-                          }}
-                        >
-                          Remove
-                        </Button>
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="checkbox"
+                        className="mt-1 h-4 w-4"
+                        checked={selectedSavedIds.has(s.placeId)}
+                        onChange={() => toggleSavedSelection(s.placeId)}
+                        disabled={!authed}
+                        aria-label={`Select ${s.name}`}
+                      />
+                      <div>
+                        <p className="font-medium">{s.name}</p>
+                        {s.address ? (
+                          <p className="text-sm text-muted-foreground">{s.address}</p>
+                        ) : null}
                       </div>
                     </div>
-
-                    
+                    <div className="flex items-center gap-2">
+                      {s.category ? <Badge variant="secondary">{s.category}</Badge> : null}
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={!authed || savingKey === `remove:${s.placeId}`}
+                        onClick={async () => {
+                          if (!authed) {
+                            void signIn("github");
+                            return;
+                          }
+                          try {
+                            setSavingKey(`remove:${s.placeId}`);
+                            await removePlace(s.placeId);
+                            setSelectedSavedIds((prev) => {
+                              const next = new Set(prev);
+                              next.delete(s.placeId);
+                              return next;
+                            });
+                            await refreshSaved();
+                          } catch (e) {
+                            setError(e instanceof Error ? e.message : "Failed to remove place");
+                          } finally {
+                            setSavingKey(null);
+                          }
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -600,10 +623,8 @@ export default function SearchPanel() {
 
           <Separator />
         </div>
-        
-        
 
-        {/* === Itinerary section (inserted here) === */}
+        {/* Itinerary section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">Itinerary</p>
@@ -654,8 +675,7 @@ export default function SearchPanel() {
                       void signIn("github");
                       return;
                     }
-                    
-                    const title = newItinTitle.trim();
+
                     if (titleAlreadyExists) {
                       setNewItinTitleError("Itinerary with this name already exists, enter a different name");
                       setTimeout(() => setNewItinTitleError(null), 2500);
@@ -672,7 +692,6 @@ export default function SearchPanel() {
                       setItineraries(list);
                       setItineraryId(created.id);
                     } catch (e: any) {
-                      // backend duplicate safeguard (409)
                       if (e?.code === "DUPLICATE_ITINERARY" || e?.status === 409) {
                         setNewItinTitleError(
                           e?.message || "Itinerary with this name already exists, enter a different name"
@@ -716,7 +735,6 @@ export default function SearchPanel() {
                     Shuffle
                   </label>
 
-                  {/* generate using ALL saved */}
                   <Button
                     type="button"
                     variant="outline"
@@ -734,7 +752,7 @@ export default function SearchPanel() {
 
                         await generateItinerary(itineraryId, {
                           mode: "replace",
-                          perDay: 3,          // <- fixed now
+                          perDay: 3,
                           shuffle: genShuffle,
                         });
 
@@ -750,7 +768,6 @@ export default function SearchPanel() {
                     {generating ? "Generating..." : "Generate (all saved)"}
                   </Button>
 
-                  {/* generate using SELECTED saved */}
                   <Button
                     type="button"
                     disabled={!itineraryId || generating || selectedSavedCount === 0}
@@ -767,7 +784,7 @@ export default function SearchPanel() {
 
                         await generateItinerary(itineraryId, {
                           mode: "replace",
-                          perDay: 3,          // <- fixed now
+                          perDay: 3,
                           shuffle: genShuffle,
                           placeIds: selectedSavedIdArray,
                         });
@@ -804,7 +821,6 @@ export default function SearchPanel() {
                     return (
                       <div key={day} className="rounded-lg border p-3">
                         <p className="text-sm font-medium">Day {day + 1}</p>
-
                         {dayItems.length === 0 ? (
                           <p className="text-sm text-muted-foreground">No items.</p>
                         ) : (
@@ -833,64 +849,13 @@ export default function SearchPanel() {
 
         <Separator />
 
-
-
-        {results.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            search for a city to see its nearby attractions.
-          </p>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Showing {results.length} results for <span className="font-medium">{query.trim()}</span>
-            </p>
-
-            <ul className="space-y-2">
-              {results.map((r) => (
-                <li key={r.providerId} className="rounded-lg border p-3">
-                  <div className="flex items-start justify-between gap-3"> 
-                    <div>
-                      <p className="font-medium">{r.name}</p>
-                      <p className="text-sm text-muted-foreground">{r.address}</p>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      {r.category ? <Badge variant="secondary">{r.category}</Badge> : null}
-
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={savedKeys.has(`${r.provider}:${r.providerId}`) ? "secondary" : "default"}
-                        disabled={savingKey === `${r.provider}:${r.providerId}`}
-
-                        onClick={async () => {
-                          if (!authed){
-                            void signIn("github");
-                            return;
-                          }
-
-                          const key = `${r.provider}:${r.providerId}`;
-                          try {
-                            setSavingKey(key);
-                            await savePlace(r);
-                            await refreshSaved();
-                          } catch (e) {
-                            setError(e instanceof Error ? e.message : "Failed to save place");
-                          } finally {
-                            setSavingKey(null);
-                          }
-                        }}
-                      >
-                        {savedKeys.has(`${r.provider}:${r.providerId}`) ? "Saved" : "Save"}
-                      </Button>
-                    </div>
-                  </div>
-
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <SearchResultsList
+          results={results}
+          savedKeys={savedKeys}
+          savingKey={savingKey}
+          query={query}
+          onSave={handleSavePlace}
+        />
       </CardContent>
     </Card>
   );
