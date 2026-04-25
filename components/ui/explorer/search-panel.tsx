@@ -469,9 +469,9 @@ export default function SearchPanel() {
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-2xl">Local Explorer</CardTitle>
+            <CardTitle className="text-2xl">Destination Itinerary Generator</CardTitle>
             <CardDescription>
-              Search for a City to discover its attractions and build a travel/sightseeing Itinerary!
+              Search for a City to discover its attractions and build a travel/vacation Itinerary!
             </CardDescription>
           </div>
           <AuthButton />
@@ -494,6 +494,14 @@ export default function SearchPanel() {
         </div>
 
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
+
+        <SearchResultsList
+          results={results}
+          savedKeys={savedKeys}
+          savingKey={savingKey}
+          query={query}
+          onSave={handleSavePlace}
+        />
 
         <Separator />
 
@@ -847,15 +855,6 @@ export default function SearchPanel() {
           )}
         </div>
 
-        <Separator />
-
-        <SearchResultsList
-          results={results}
-          savedKeys={savedKeys}
-          savingKey={savingKey}
-          query={query}
-          onSave={handleSavePlace}
-        />
       </CardContent>
     </Card>
   );
