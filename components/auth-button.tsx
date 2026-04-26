@@ -3,30 +3,29 @@
 import { signIn, signOut, useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 
-export function AuthButton(){
+export default function AuthButton() {
     const { status, data } = useSession();
 
-    if (status == "loading"){
-        return <Button variant="secondary" disabled>Loading...</Button>;
+    if (status === "loading") {
+        return <Button type="button" variant="secondary" size="sm" disabled>Loading...</Button>;
     }
 
-    if (status == "authenticated"){
+    if (status === "authenticated") {
         return (
             <div className="flex items-center gap-2">
                 <span className="text-sm text-muted-foreground">
-                    { data.user?.name ?? data.user?.email ?? "Signed in"}
+                    {data.user?.name ?? data.user?.email ?? "Signed in"}
                 </span>
-                <Button variant="secondary" onClick={() => signOut()}>
-                    Sign Out
+                <Button type="button" variant="secondary" size="sm" onClick={() => void signOut()}>
+                    Sign out
                 </Button>
             </div>
         );
     }
 
     return (
-        <Button onClick={() => signIn("github")}>
+        <Button type="button" size="sm" onClick={() => void signIn("github")}>
             Sign in
         </Button>
     );
-
 }
