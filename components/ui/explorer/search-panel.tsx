@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 
 import { useSession, signIn } from "next-auth/react";
 import AuthButton from "@/components/explorer/auth-button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,11 @@ type PlaceResult = {
   category?: string;
   lat?: number;
   lon?: number;
+};
+
+type ChatMessage = {
+  role: "user" | "assistant";
+  content: string;
 };
 
 // ── API helpers ───────────────────────────────────────────────────────────────
@@ -231,6 +237,87 @@ function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: Sea
   );
 }
 
+// ── ChatPanel ────────────────────────────────────────────────────────────────
+
+type ChatPanelProps = {
+  messages: ChatMessage[];
+  input: string;
+  loading: boolean;
+  onInputChange: (value: string) => void;
+  onSend: () => void;
+};
+
+function ChatPanel({ messages, input, loading, onInputChange, onSend }: ChatPanelProps) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, loading]);
+
+  return (
+    <div className="flex h-full flex-col">
+      <p className="mb-2 text-sm font-medium">AI Assistant</p>
+      <Separator />
+
+      {/* Message list */}
+      <div className="my-3 flex h-72 flex-col gap-2 overflow-y-auto pr-1">
+        {messages.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Describe your trip — e.g. &ldquo;4 day trip to Toronto&rdquo; — and I&apos;ll build your itinerary.
+          </p>
+        ) : (
+          messages.map((m, i) => (
+            <div
+              key={i}
+              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                m.role === "user"
+                  ? "self-end bg-primary text-primary-foreground"
+                  : "self-start bg-muted text-foreground"
+              }`}
+            >
+              {m.content}
+            </div>
+          ))
+        )}
+
+        {loading && (
+          <div className="self-start rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+            …
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      <Separator />
+
+      {/* Input row */}
+      <div className="mt-3 flex gap-2">
+        <Input
+          value={input}
+          onChange={(e) => onInputChange(e.target.value)}
+          placeholder="Type a message…"
+          className="text-sm"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
+        />
+        <Button
+          type="button"
+          size="sm"
+          disabled={!input.trim() || loading}
+          onClick={onSend}
+        >
+          Send
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── SearchPanel ───────────────────────────────────────────────────────────────
 
 export default function SearchPanel() {
@@ -264,6 +351,11 @@ export default function SearchPanel() {
   const [newItinTitle, setNewItinTitle] = useState("My Trip");
   const [newDaysCount, setNewDaysCount] = useState(3);
   const [newItinTitleError, setNewItinTitleError] = useState<string | null>(null);
+
+  const [chatOpen, setChatOpen] = useState(true);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatLoading, setChatLoading] = useState(false);
 
   const { status } = useSession();
   const authed = status === "authenticated";
@@ -447,6 +539,24 @@ export default function SearchPanel() {
     }
   }
 
+  function handleChatSend() {
+    const text = chatInput.trim();
+    if (!text || chatLoading) return;
+
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    setChatInput("");
+    setChatLoading(true);
+
+    // Placeholder — real AI call wired in Step 4
+    setTimeout(() => {
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "AI not yet connected — coming in the next step!" },
+      ]);
+      setChatLoading(false);
+    }, 600);
+  }
+
   async function handleSavePlace(r: PlaceResult) {
     if (!authed) {
       void signIn("github");
@@ -479,29 +589,62 @@ export default function SearchPanel() {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Try: Toronto"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void onSearch();
-            }}
-          />
-          <Button type="button" onClick={onSearch} disabled={!canSearch}>
-            {loading ? "Searching..." : "Search"}
-          </Button>
+
+        {/* Two-column area: search+results left, chat panel right */}
+        <div className="flex items-start">
+
+          {/* Left column */}
+          <div className="min-w-0 flex-1 space-y-4">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Try: Toronto"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void onSearch();
+                }}
+              />
+              <Button type="button" onClick={onSearch} disabled={!canSearch}>
+                {loading ? "Searching..." : "Search"}
+              </Button>
+            </div>
+
+            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+
+            <SearchResultsList
+              results={results}
+              savedKeys={savedKeys}
+              savingKey={savingKey}
+              query={query}
+              onSave={handleSavePlace}
+            />
+          </div>
+
+          {/* Right column: toggle tab + collapsible chat panel */}
+          <div className="ml-3 flex flex-shrink-0 items-start">
+            <button
+              type="button"
+              onClick={() => setChatOpen((o) => !o)}
+              className="mt-1 flex h-16 w-5 items-center justify-center rounded-l-md border border-r-0 bg-muted text-muted-foreground transition-colors hover:bg-accent"
+              aria-label={chatOpen ? "Collapse chat panel" : "Expand chat panel"}
+            >
+              {chatOpen ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+            </button>
+
+            <div className={`overflow-hidden transition-all duration-300 ${chatOpen ? "w-80" : "w-0"}`}>
+              <div className="w-80 rounded-r-lg border border-l-0 p-4">
+                <ChatPanel
+                  messages={messages}
+                  input={chatInput}
+                  loading={chatLoading}
+                  onInputChange={setChatInput}
+                  onSend={handleChatSend}
+                />
+              </div>
+            </div>
+          </div>
+
         </div>
-
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
-
-        <SearchResultsList
-          results={results}
-          savedKeys={savedKeys}
-          savingKey={savingKey}
-          query={query}
-          onSave={handleSavePlace}
-        />
 
         <Separator />
 
