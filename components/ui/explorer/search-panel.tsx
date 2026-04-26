@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
 import { useSession, signIn } from "next-auth/react";
-import AuthButton from "@/components/explorer/auth-button";
+import AuthButton from "@/components/auth-button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
