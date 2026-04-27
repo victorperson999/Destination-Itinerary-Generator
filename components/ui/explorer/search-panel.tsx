@@ -66,6 +66,11 @@ type ChatMessage = {
   content: string;
 };
 
+type ChatSideEffect =
+  | { type: "search"; query: string }
+  | { type: "refresh_itineraries"; selectId?: string }
+  | { type: "generate"; itineraryId: string; perDay: number; shuffle: boolean };
+
 // ── API helpers ───────────────────────────────────────────────────────────────
 
 async function fetchSaved(): Promise<SavedItem[]> {
@@ -253,7 +258,7 @@ function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: Sea
           size="sm"
           variant="outline"
           className="w-full"
-          onClick={() => setVisibleCount((c) => c + 5)}
+          onClick={() => setVisibleCount((c) => c + 10)}
         >
           Show more results ({results.length - visibleCount} remaining)
         </Button>
@@ -535,27 +540,18 @@ export default function SearchPanel() {
     }
   }
 
-  async function onSearch() {
-    const q = query.trim();
-    if (!q) {
-      setError("Enter a city or name of neighbourhood (e.g. Toronto)");
-      setResults([]);
-      return;
-    }
+  async function performSearch(q: string) {
+    setQuery(q);
     setError(null);
     setLoading(true);
     setResults([]);
-
     try {
-      const res = await fetch(`/api/places?q=${encodeURIComponent(q)}`, {
-        cache: "no-store",
-      });
+      const res = await fetch(`/api/places?q=${encodeURIComponent(q)}`, { cache: "no-store" });
       if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(`Failed to fetch places: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
       }
-      const data = (await res.json()) as PlaceResult[];
-      setResults(data);
+      setResults((await res.json()) as PlaceResult[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Search failed");
       setResults([]);
@@ -564,22 +560,83 @@ export default function SearchPanel() {
     }
   }
 
-  function handleChatSend() {
+  async function onSearch() {
+    const q = query.trim();
+    if (!q) {
+      setError("Enter a city or name of neighbourhood (e.g. Toronto)");
+      setResults([]);
+      return;
+    }
+    await performSearch(q);
+  }
+
+  async function handleChatSend() {
     const text = chatInput.trim();
     if (!text || chatLoading) return;
 
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    const newMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
+    setMessages(newMessages);
     setChatInput("");
     setChatLoading(true);
 
-    // Placeholder — real AI call wired in Step 4
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: newMessages,
+          context: {
+            savedCount: saved.length,
+            itineraryCount: itineraries.length,
+            activeItineraryId: itineraryId ?? undefined,
+            activeItineraryTitle: selectedItinerary?.title,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error(`Chat request failed: ${res.status} ${errText.slice(0, 100)}`);
+      }
+
+      const data = (await res.json()) as { message: string; sideEffects: ChatSideEffect[] };
+      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+
+      for (const effect of data.sideEffects ?? []) {
+        if (effect.type === "search") {
+          void performSearch(effect.query);
+        } else if (effect.type === "refresh_itineraries") {
+          const list = await fetchItineraries();
+          setItineraries(list);
+          if (effect.selectId) setItineraryId(effect.selectId);
+        } else if (effect.type === "generate") {
+          try {
+            await generateItinerary(effect.itineraryId, {
+              mode: "replace",
+              perDay: effect.perDay,
+              shuffle: effect.shuffle,
+            });
+            const items = await fetchItineraryItems(effect.itineraryId);
+            setItineraryItems(items);
+            setItineraryId(effect.itineraryId);
+          } catch {
+            // generation failure is non-fatal — user can trigger manually
+          }
+        }
+      }
+    } catch (e) {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "AI not yet connected — coming in the next step!" },
+        {
+          role: "assistant",
+          content: e instanceof Error && e.message.includes("401")
+            ? "Please sign in to use AI planning features."
+            : "Sorry, I couldn't reach the AI right now. Please try again.",
+        },
       ]);
+    } finally {
       setChatLoading(false);
-    }, 600);
+    }
   }
 
   async function handleSavePlace(r: PlaceResult) {
@@ -993,7 +1050,7 @@ export default function SearchPanel() {
                   No items yet. Click <span className="font-medium">Generate (replace)</span>.
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="max-h-[28rem] overflow-y-auto space-y-3 pr-1">
                   {Array.from({ length: selectedItinerary.daysCount }, (_, day) => {
                     const dayItems = itemsByDay.get(day) ?? [];
                     return (
