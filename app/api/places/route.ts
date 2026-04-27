@@ -3,64 +3,33 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-const OVERPASS_ENDPOINTS = [
-  "https://overpass-api.de/api/interpreter",
-  "https://overpass.kumi.systems/api/interpreter",
-  "https://overpass.openstreetmap.ru/api/interpreter",
-  "https://overpass.nchc.org.tw/api/interpreter",
+const OPENTRIPMAP_KEY = process.env.OPENTRIPMAP_API_KEY ?? "";
+
+// Focused tourism/travel categories — broad enough to cover major attractions,
+// narrow enough to exclude irrelevant commercial POIs
+const KINDS = [
+  "interesting_places",
+  "cultural",
+  "historic",
+  "museums",
+  "architecture",
+  "natural",
+  "amusements",
+  "religion",
+  "foods",
+].join(",");
+
+// Priority order for picking a display category from OpenTripMap's kinds string
+const CATEGORY_PRIORITY = [
+  "museums",
+  "historic",
+  "architecture",
+  "cultural",
+  "natural",
+  "amusements",
+  "religion",
+  "foods",
 ];
-
-async function postOverpass(query: string, timeoutMs = 20000) {
-  let lastErr: any = null;
-
-  for (const url of OVERPASS_ENDPOINTS) {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), timeoutMs);
-
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain",
-          "User-Agent": "local-explorer-itinerary-planner (dev)",
-          "Accept": "application/json",
-        },
-        body: query,
-        cache: "no-store",
-        signal: ctrl.signal,
-      });
-
-      clearTimeout(t);
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        lastErr = {
-          url,
-          status: res.status,
-          statusText: res.statusText,
-          details: text.slice(0, 300),
-        };
-        continue; // try next endpoint
-      }
-
-      // Sometimes Overpass returns HTML even with 200; guard it
-      const ct = res.headers.get("content-type") ?? "";
-      if (!ct.includes("application/json")) {
-        const text = await res.text().catch(() => "");
-        lastErr = { url, status: res.status, statusText: "Non-JSON response", details: text.slice(0, 300) };
-        continue;
-      }
-
-      return await res.json();
-    } catch (e: any) {
-      clearTimeout(t);
-      lastErr = { url, error: e?.name === "AbortError" ? "Timeout" : String(e) };
-      continue;
-    }
-  }
-
-  throw lastErr ?? new Error("All Overpass endpoints failed");
-}
 
 type Place = {
   provider: "osm";
@@ -74,61 +43,50 @@ type Place = {
 
 type NominatimResult = { lat: string; lon: string };
 
-type OverpassElement = {
-  type: "node" | "way" | "relation";
-  id: number;
-  lat?: number;
-  lon?: number;
-  center?: { lat: number; lon: number };
-  tags?: Record<string, string>;
+type OtmPlace = {
+  xid: string;
+  name: string;
+  dist: number;
+  rate: number;
+  kinds: string;
+  point: { lon: number; lat: number };
 };
 
-type OverpassResponse = {
-  elements?: OverpassElement[];
-};
-
-function categoryFromTags(tags?: Record<string, string>): string | undefined {
-  if (!tags) return undefined;
-  const t = tags.tourism || tags.amenity || tags.leisure;
-  if (!t) return undefined;
-
-  const map: Record<string, string> = {
-    museum: "Museum",
-    attraction: "Attraction",
-    gallery: "Gallery",
-    park: "Park",
-    cafe: "Cafe",
-    restaurant: "Food",
-  };
-
-  return map[t] ?? (t.length ? t[0].toUpperCase() + t.slice(1) : undefined);
-}
-
-function addressFromTags(tags?: Record<string, string>): string {
-  if (!tags) return "";
-  const parts = [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"]].filter(Boolean);
-  if (parts.length) return parts.join(" ");
-  return tags["addr:full"] ?? "";
+function categoryFromKinds(kinds: string): string | undefined {
+  const list = kinds.split(",").map((k) => k.trim().toLowerCase());
+  for (const p of CATEGORY_PRIORITY) {
+    if (list.includes(p)) return p.charAt(0).toUpperCase() + p.slice(1);
+  }
+  const fallback = list.find(
+    (k) => k !== "interesting_places" && k !== "tourist_facilities" && k !== "other"
+  );
+  return fallback ? fallback.charAt(0).toUpperCase() + fallback.slice(1) : undefined;
 }
 
 function cacheKeyForPlaces(q: string, limit: number, radius: number) {
   const nq = q.trim().toLowerCase();
-  return `places:v1:${nq}:limit=${limit}:radius=${radius}`;
+  return `places:otm:v1:${nq}:limit=${limit}:radius=${radius}`;
 }
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
-  const limit = Math.min(Number(searchParams.get("limit") ?? 15), 15);
+  const limit = Math.min(Number(searchParams.get("limit") ?? 50), 50);
 
   if (!q) return NextResponse.json([]);
+
+  if (!OPENTRIPMAP_KEY) {
+    return NextResponse.json(
+      { error: "OpenTripMap API key not configured" },
+      { status: 500 }
+    );
+  }
 
   const radius = 5000;
   const key = cacheKeyForPlaces(q, limit, radius);
 
-  // cache lookup
+  // Cache lookup
   const cached = await prisma.placesQueryCache.findUnique({ where: { key } });
-
   if (cached && cached.expiresAt.getTime() > Date.now()) {
     if (!Array.isArray(cached.results)) {
       await prisma.placesQueryCache.delete({ where: { key } });
@@ -139,11 +97,8 @@ export async function GET(req: Request) {
     }
   }
 
-
-  // 1) Geocode (Nominatim)
-  const geoUrl =
-    `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
-
+  // 1. Geocode with Nominatim
+  const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
   const geoRes = await fetch(geoUrl, {
     headers: { "User-Agent": "local-explorer-itinerary-planner (dev)" },
     cache: "no-store",
@@ -159,98 +114,57 @@ export async function GET(req: Request) {
   const lat = Number(geo[0].lat);
   const lon = Number(geo[0].lon);
 
-  // 2) Nearby POIs (Overpass) with fallback + radius shrink
-  const radii = [radius, 2500, 1500];
+  // 2. Fetch POIs from OpenTripMap
+  // Note: kinds must use literal commas — URLSearchParams encodes them as %2C which OTM rejects
+  const otmUrl =
+    `https://api.opentripmap.com/0.1/en/places/radius` +
+    `?apikey=${encodeURIComponent(OPENTRIPMAP_KEY)}` +
+    `&radius=${radius}` +
+    `&lon=${lon}` +
+    `&lat=${lat}` +
+    `&kinds=${KINDS}` +
+    `&limit=${limit}` +
+    `&rate=1` +
+    `&format=json` +
+    `&lang=en`;
 
-  let data: OverpassResponse | null = null;
-  let lastErr: any = null;
+  const otmRes = await fetch(otmUrl, { cache: "no-store" });
 
-  let usedRadius = radius;
+  if (!otmRes.ok) {
+    const text = await otmRes.text().catch(() => "");
+    return NextResponse.json(
+      { error: "Places query failed", details: text.slice(0, 200) },
+      { status: 502 }
+    );
+  }
 
-  for (const r of radii) {
-    const overpassQuery = `
-      [out:json][timeout:25];
-      (
-        node["name"]["tourism"~"attraction|museum|gallery"](around:${r},${lat},${lon});
-        way["name"]["tourism"~"attraction|museum|gallery"](around:${r},${lat},${lon});
-        relation["name"]["tourism"~"attraction|museum|gallery"](around:${r},${lat},${lon});
-        node["name"]["leisure"="park"](around:${r},${lat},${lon});
-      );
-      out center ${limit};
-      `;
+  const otmData = (await otmRes.json()) as OtmPlace[];
 
-      try {
-        data = (await postOverpass(overpassQuery, 20000)) as OverpassResponse;
-        usedRadius = r;
-        lastErr = null;
-        break;
-      } catch (e) {
-        lastErr = e;
-        continue;
-      }
-    }
+  const results: Place[] = otmData
+    .filter((p) => p.name && p.name.trim().length > 0)
+    .sort((a, b) => b.rate - a.rate || a.dist - b.dist)
+    .map((p) => {
+      const category = categoryFromKinds(p.kinds);
+      const out: Place = {
+        provider: "osm",
+        providerId: p.xid,
+        name: p.name.trim(),
+        address: "",
+        ...(category ? { category } : {}),
+        ...(typeof p.point?.lat === "number" ? { lat: p.point.lat } : {}),
+        ...(typeof p.point?.lon === "number" ? { lon: p.point.lon } : {}),
+      };
+      return out;
+    });
 
-    if (!data) {
-      return NextResponse.json(
-        { error: "Places query failed", details: lastErr },
-        { status: 502 }
-      );
-    }
-
-
-  const elements = data.elements ?? [];
-
-  const results: Place[] = elements.flatMap((el) => {
-    const tags = el.tags;
-    const name = tags?.name;
-    if (!name) return [];
-
-    const providerId = `${el.type}/${el.id}`;
-    const cLat = typeof el.lat === "number" ? el.lat : el.center?.lat;
-    const cLon = typeof el.lon === "number" ? el.lon : el.center?.lon;
-    const category = categoryFromTags(tags);
-
-    // Build with OPTIONAL fields omitted when undefined
-    const out: Place = {
-      provider: "osm",
-      providerId,
-      name,
-      address: addressFromTags(tags),
-      ...(category ? { category } : {}),
-      ...(typeof cLat === "number" ? { lat: cLat } : {}),
-      ...(typeof cLon === "number" ? { lon: cLon } : {}),
-    };
-
-    return [out];
-  });
-  
-  // handle cache write (miss)
-  const timeLimit = 1000*60*60*6;
-  const expiresAt = new Date(Date.now() + timeLimit);
+  // Cache write — 6 hour TTL
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 6);
 
   await prisma.placesQueryCache.upsert({
     where: { key },
-    update: { results, 
-              expiresAt, 
-              lat, 
-              long: lon, 
-              limit, 
-              radius: usedRadius,
-              q: q.trim().toLocaleLowerCase() 
-            },
-    create: { key, 
-              q: q.trim().toLowerCase(), 
-              limit, 
-              radius: usedRadius,
-              lat, 
-              long: lon, 
-              results,
-              expiresAt
-            },
+    update: { results, expiresAt, lat, long: lon, limit, radius, q: q.trim().toLowerCase() },
+    create: { key, q: q.trim().toLowerCase(), limit, radius, lat, long: lon, results, expiresAt },
   });
 
-  return NextResponse.json(results, {
-    headers: {"x-cache": "MISS"},
-  });
+  return NextResponse.json(results, { headers: { "x-cache": "MISS" } });
 }
-

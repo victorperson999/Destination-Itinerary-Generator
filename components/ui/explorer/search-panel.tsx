@@ -196,43 +196,68 @@ type SearchResultsListProps = {
 };
 
 function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: SearchResultsListProps) {
+  const [visibleCount, setVisibleCount] = useState(15);
+
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [results]);
+
   if (results.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        search for a city to see its nearby attractions.
+        Search for a city to see its nearby attractions.
       </p>
     );
   }
 
+  const visible = results.slice(0, visibleCount);
+  const hasMore = visibleCount < results.length;
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <p className="text-sm text-muted-foreground">
-        Showing {results.length} results for <span className="font-medium">{query.trim()}</span>
+        Showing {visible.length} of {results.length} for{" "}
+        <span className="font-medium">{query.trim()}</span>
       </p>
-      <ul className="space-y-2">
-        {results.map((r) => (
-          <li key={r.providerId} className="rounded-lg border p-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="font-medium">{r.name}</p>
-                <p className="text-sm text-muted-foreground">{r.address}</p>
+
+      <div className="max-h-96 overflow-y-auto rounded-lg border">
+        <ul className="divide-y">
+          {visible.map((r) => (
+            <li key={r.providerId} className="p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="font-medium">{r.name}</p>
+                  <p className="text-sm text-muted-foreground">{r.address}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {r.category ? <Badge variant="secondary">{r.category}</Badge> : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={savedKeys.has(`${r.provider}:${r.providerId}`) ? "secondary" : "default"}
+                    disabled={savingKey === `${r.provider}:${r.providerId}`}
+                    onClick={() => void onSave(r)}
+                  >
+                    {savedKeys.has(`${r.provider}:${r.providerId}`) ? "Saved" : "Save"}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                {r.category ? <Badge variant="secondary">{r.category}</Badge> : null}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={savedKeys.has(`${r.provider}:${r.providerId}`) ? "secondary" : "default"}
-                  disabled={savingKey === `${r.provider}:${r.providerId}`}
-                  onClick={() => void onSave(r)}
-                >
-                  {savedKeys.has(`${r.provider}:${r.providerId}`) ? "Saved" : "Save"}
-                </Button>
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {hasMore && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="w-full"
+          onClick={() => setVisibleCount((c) => c + 5)}
+        >
+          Show more results ({results.length - visibleCount} remaining)
+        </Button>
+      )}
     </div>
   );
 }
@@ -715,61 +740,63 @@ export default function SearchPanel() {
           ) : saved.length === 0 ? (
             <p className="text-sm text-muted-foreground">No saved places yet.</p>
           ) : (
-            <ul className="space-y-2">
-              {saved.map((s) => (
-                <li key={s.placeId} className="rounded-lg border p-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="checkbox"
-                        className="mt-1 h-4 w-4"
-                        checked={selectedSavedIds.has(s.placeId)}
-                        onChange={() => toggleSavedSelection(s.placeId)}
-                        disabled={!authed}
-                        aria-label={`Select ${s.name}`}
-                      />
-                      <div>
-                        <p className="font-medium">{s.name}</p>
-                        {s.address ? (
-                          <p className="text-sm text-muted-foreground">{s.address}</p>
-                        ) : null}
+            <div className="max-h-64 overflow-y-auto">
+              <ul className="grid grid-cols-2 gap-2">
+                {saved.map((s) => (
+                  <li key={s.placeId} className="rounded-lg border p-2">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-start gap-2">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-4 w-4 flex-shrink-0"
+                          checked={selectedSavedIds.has(s.placeId)}
+                          onChange={() => toggleSavedSelection(s.placeId)}
+                          disabled={!authed}
+                          aria-label={`Select ${s.name}`}
+                        />
+                        <p className="line-clamp-2 text-sm font-medium leading-tight">{s.name}</p>
+                      </div>
+                      <div className="flex items-center justify-between gap-1">
+                        {s.category ? (
+                          <Badge variant="secondary" className="text-xs">{s.category}</Badge>
+                        ) : (
+                          <span />
+                        )}
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-xs"
+                          disabled={!authed || savingKey === `remove:${s.placeId}`}
+                          onClick={async () => {
+                            if (!authed) {
+                              void signIn("github");
+                              return;
+                            }
+                            try {
+                              setSavingKey(`remove:${s.placeId}`);
+                              await removePlace(s.placeId);
+                              setSelectedSavedIds((prev) => {
+                                const next = new Set(prev);
+                                next.delete(s.placeId);
+                                return next;
+                              });
+                              await refreshSaved();
+                            } catch (e) {
+                              setError(e instanceof Error ? e.message : "Failed to remove place");
+                            } finally {
+                              setSavingKey(null);
+                            }
+                          }}
+                        >
+                          Remove
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {s.category ? <Badge variant="secondary">{s.category}</Badge> : null}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        disabled={!authed || savingKey === `remove:${s.placeId}`}
-                        onClick={async () => {
-                          if (!authed) {
-                            void signIn("github");
-                            return;
-                          }
-                          try {
-                            setSavingKey(`remove:${s.placeId}`);
-                            await removePlace(s.placeId);
-                            setSelectedSavedIds((prev) => {
-                              const next = new Set(prev);
-                              next.delete(s.placeId);
-                              return next;
-                            });
-                            await refreshSaved();
-                          } catch (e) {
-                            setError(e instanceof Error ? e.message : "Failed to remove place");
-                          } finally {
-                            setSavingKey(null);
-                          }
-                        }}
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           <Separator />
