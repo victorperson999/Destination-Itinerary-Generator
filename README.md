@@ -100,7 +100,7 @@ Open [http://localhost:3000](http://localhost:3000).
 ```
 app/
   api/
-    chat/             ← AI assistant endpoint (Gemini function calling)
+    chat/            ← AI assistant endpoint (Gemini function calling)
     places/           ← OSM place search (public, no auth required)
     saved/            ← User's saved places (CRUD)
     itineraries/      ← Itinerary management + auto-generate schedule
