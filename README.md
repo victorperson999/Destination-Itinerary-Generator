@@ -1,4 +1,4 @@
-Local Explorer — Itinerary Planner
+# Local Explorer — Itinerary Planner
                                                                         
   A web app for discovering local points of interest and building       
   day-by-day travel itineraries. Search any city for restaurants, parks,
@@ -6,7 +6,7 @@ Local Explorer — Itinerary Planner
   (or an AI assistant) arrange your schedule automatically.
 
   ---
-  What it does
+ # What it does
 
   1. Search — type a city or neighbourhood name to pull live points of
   interest from OpenStreetMap. No API key required for search.
@@ -22,7 +22,7 @@ Local Explorer — Itinerary Planner
   your behalf via natural language.
 
   ---
-  Tech Stack
+  # Tech Stack
 
   ┌───────────────┬─────────────────────────────────────────────────┐
   │     Layer     │                   Technology                    │
@@ -50,7 +50,7 @@ Local Explorer — Itinerary Planner
   └───────────────┴─────────────────────────────────────────────────┘
 
   ---
-  Prerequisites
+  # Prerequisites
 
   - Node.js 18+
   - pnpm (npm install -g pnpm)
@@ -59,7 +59,7 @@ Local Explorer — Itinerary Planner
   - A https://aistudio.google.com/app/apikey key for the chat assistant
 
   ---
-  Getting Started
+  # Getting Started
 
   1. Clone and install
 
