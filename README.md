@@ -1,9 +1,8 @@
 # Local Explorer — Itinerary Planner
                                                                         
-  A web app for discovering local points of interest and building       
-  day-by-day travel itineraries. Search any city for restaurants, parks,
-   museums, and more — then save places, create trips, and let the app  
-  (or an AI assistant) arrange your schedule automatically.
+  A web app for discovering local points of interest and building day-by-day travel itineraries. Search 
+  any city for restaurants, parks, museums, and more to save places, and create trips.
+  Option for an AI assistant to arrange your schedule automatically.
 
   ---
  # What it does
