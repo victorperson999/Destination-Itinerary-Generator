@@ -149,11 +149,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         include: { place: true },
         orderBy: { createdAt: "desc" },
     });
-    // if user chose specific places, but none matched their saved list, then:
-    if (placeIds && saved.length == 0){
+    // if no saved places at all, bail early with a clear message
+    if (saved.length === 0){
         return NextResponse.json(
-            { error: "No selected places found in your saved list."},
-            { status: 400}
+            { error: placeIds ? "No selected places found in your saved list." : "You have no saved places. Search for a destination and save some places first." },
+            { status: 400 }
         );
     }
 
@@ -162,13 +162,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         .filter((p) => typeof p.lat == "number" && typeof p.lon == "number");
        
     
-    if (eligible.length == 0){
-        return NextResponse.json({
-            ok: true,
-            count: 0,
-            items: [],
-            debug: { savedCount: saved.length, eligibleCount: 0, reason: "No saved places with lat/lon"},
-        });
+    if (eligible.length === 0){
+        return NextResponse.json(
+            { error: "None of your saved places have location coordinates and cannot be scheduled." },
+            { status: 400 }
+        );
     }
 
     if (shuffle){

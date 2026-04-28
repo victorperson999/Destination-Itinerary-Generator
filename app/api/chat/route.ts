@@ -75,7 +75,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "messages required" }, { status: 400 });
   }
 
-  const messages: InMessage[] = body.messages;
+  // Cap history to last 20 messages to avoid hitting context limits
+  const messages: InMessage[] = body.messages.slice(-20);
   const ctx: {
     savedCount?: number;
     itineraryCount?: number;
@@ -100,7 +101,8 @@ export async function POST(req: Request) {
       ? `Active itinerary: "${ctx.activeItineraryTitle ?? "unknown"}" (ID: ${ctx.activeItineraryId}).`
       : "No active itinerary selected.",
     "When the user asks about places or a destination, call search_city.",
-    "When the user wants to plan a trip, call create_itinerary then generate_itinerary.",
+    "When the user wants to plan a trip, call create_itinerary first, wait for its response to get the id, then call generate_itinerary using that id.",
+    "If a function returns an error field, always relay that error message to the user exactly — never assume success.",
     "Keep replies short. Do not repeat tool return values verbatim.",
   ].join("\n");
 
@@ -119,26 +121,40 @@ export async function POST(req: Request) {
   const chat = model.startChat({ history });
   const sideEffects: ChatSideEffect[] = [];
 
-  let result = await chat.sendMessage(lastMsg.content);
+  try {
+    let result = await chat.sendMessage(lastMsg.content);
 
-  // Function calling loop — max 5 iterations to prevent runaway tool chains
-  for (let i = 0; i < 5; i++) {
-    const calls = result.response.functionCalls();
-    if (!calls?.length) break;
+    // Function calling loop — max 5 iterations to prevent runaway tool chains
+    for (let i = 0; i < 5; i++) {
+      const calls = result.response.functionCalls();
+      if (!calls?.length) break;
 
-    const parts = await Promise.all(
-      calls.map(async (call) => {
-        const args = (call.args ?? {}) as Record<string, unknown>;
-        const response = await executeFunction(call.name, args, userId, sideEffects);
-        return { functionResponse: { name: call.name, response } };
-      })
+      const parts = await Promise.all(
+        calls.map(async (call) => {
+          const args = (call.args ?? {}) as Record<string, unknown>;
+          const response = await executeFunction(call.name, args, userId, sideEffects);
+          return { functionResponse: { name: call.name, response } };
+        })
+      );
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      result = await chat.sendMessage(parts as any);
+    }
+
+    return NextResponse.json({ message: result.response.text(), sideEffects });
+  } catch (e: any) {
+    if (e?.status === 429) {
+      return NextResponse.json(
+        { error: "The AI is temporarily rate-limited. Please wait a few seconds and try again." },
+        { status: 429 }
+      );
+    }
+    console.error("Gemini error:", e);
+    return NextResponse.json(
+      { error: "An unexpected error occurred. Please try again." },
+      { status: 500 }
     );
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    result = await chat.sendMessage(parts as any);
   }
-
-  return NextResponse.json({ message: result.response.text(), sideEffects });
 }
 
 async function executeFunction(
@@ -181,16 +197,21 @@ async function executeFunction(
   if (name === "generate_itinerary") {
     if (!userId) return { error: "User is not signed in" };
     const itineraryId = String(args.itineraryId ?? "").trim();
-    if (!itineraryId) return { error: "itineraryId is required" };
+    if (!itineraryId) return { error: "No itinerary is selected. Please create one or ask the user to select an itinerary first." };
 
     const itin = await prisma.itinerary.findFirst({ where: { id: itineraryId, userId } });
     if (!itin) return { error: "Itinerary not found or not owned by user" };
+
+    const savedCount = await prisma.savedPlace.count({ where: { savedById: userId } });
+    if (savedCount === 0) {
+      return { error: "You have no saved places to generate from. Search for a destination and save some places first." };
+    }
 
     const perDay = Math.min(Math.max(Math.round(Number(args.perDay) || 3), 1), 8);
     const shuffle = Boolean(args.shuffle);
 
     sideEffects.push({ type: "generate", itineraryId, perDay, shuffle });
-    return { result: `Will generate schedule for "${itin.title}" (${perDay} places/day)` };
+    return { result: `Generating schedule for "${itin.title}" across ${itin.daysCount} day(s) using your saved places.` };
   }
 
   return { error: `Unknown function: ${name}` };

@@ -595,8 +595,9 @@ export default function SearchPanel() {
       });
 
       if (!res.ok) {
-        const errText = await res.text().catch(() => "");
-        throw new Error(`Chat request failed: ${res.status} ${errText.slice(0, 100)}`);
+        const data = await res.json().catch(() => null);
+        const msg = data?.error ?? `Chat request failed: ${res.status}`;
+        throw Object.assign(new Error(msg), { status: res.status });
       }
 
       const data = (await res.json()) as { message: string; sideEffects: ChatSideEffect[] };
@@ -624,13 +625,15 @@ export default function SearchPanel() {
           }
         }
       }
-    } catch (e) {
+    } catch (e: any) {
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: e instanceof Error && e.message.includes("401")
+          content: e?.status === 401
             ? "Please sign in to use AI planning features."
+            : e?.status === 429
+            ? e.message
             : "Sorry, I couldn't reach the AI right now. Please try again.",
         },
       ]);
