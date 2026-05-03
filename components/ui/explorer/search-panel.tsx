@@ -601,7 +601,9 @@ export default function SearchPanel() {
       }
 
       const data = (await res.json()) as { message: string; sideEffects: ChatSideEffect[] };
-      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      if (data.message) {
+        setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      }
 
       for (const effect of data.sideEffects ?? []) {
         if (effect.type === "search") {

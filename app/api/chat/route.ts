@@ -141,7 +141,9 @@ export async function POST(req: Request) {
       result = await chat.sendMessage(parts as any);
     }
 
-    return NextResponse.json({ message: result.response.text(), sideEffects });
+    const text = result.response.text().trim();
+    const message = text || buildFallbackMessage(sideEffects);
+    return NextResponse.json({ message, sideEffects });
   } catch (e: any) {
     if (e?.status === 429) {
       return NextResponse.json(
@@ -155,6 +157,19 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+function buildFallbackMessage(effects: ChatSideEffect[]): string {
+  if (effects.some((e) => e.type === "generate")) {
+    return "Your itinerary is ready! Check the itinerary section below.";
+  }
+  if (effects.some((e) => e.type === "refresh_itineraries")) {
+    return "Itinerary created! You can now add places or generate a schedule.";
+  }
+  if (effects.some((e) => e.type === "search")) {
+    return "Search complete! Check the results on the left.";
+  }
+  return "Done!";
 }
 
 async function executeFunction(
