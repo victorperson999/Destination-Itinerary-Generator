@@ -12,7 +12,7 @@ type InMessage = { role: "user" | "assistant"; content: string };
 export type ChatSideEffect =
   | { type: "search"; query: string }
   | { type: "refresh_itineraries"; selectId?: string }
-  | { type: "generate"; itineraryId: string; perDay: number; shuffle: boolean };
+  | { type: "generate"; itineraryId: string; perDay: number; shuffle: boolean; useSelected: boolean };
 
 const SEARCH_FN = {
   name: "search_city",
@@ -79,6 +79,7 @@ export async function POST(req: Request) {
   const messages: InMessage[] = body.messages.slice(-20);
   const ctx: {
     savedCount?: number;
+    selectedSavedCount?: number;
     itineraryCount?: number;
     activeItineraryId?: string;
     activeItineraryTitle?: string;
@@ -96,10 +97,13 @@ export async function POST(req: Request) {
     userId
       ? "The user is signed in and can search, create itineraries, and generate schedules."
       : "The user is not signed in. Only search_city is available — politely suggest signing in for planning features.",
-    `App state: ${ctx.savedCount ?? 0} saved place(s), ${ctx.itineraryCount ?? 0} itinerary/itineraries.`,
+    `App state: ${ctx.savedCount ?? 0} saved place(s) (${ctx.selectedSavedCount ?? 0} selected), ${ctx.itineraryCount ?? 0} itinerary/itineraries.`,
     ctx.activeItineraryId
       ? `Active itinerary: "${ctx.activeItineraryTitle ?? "unknown"}" (ID: ${ctx.activeItineraryId}).`
       : "No active itinerary selected.",
+    ctx.selectedSavedCount && ctx.selectedSavedCount > 0
+      ? `The user has ${ctx.selectedSavedCount} place(s) selected — generation will use only those selected places.`
+      : `No places are selected — if the user asks to generate, warn them that ALL ${ctx.savedCount ?? 0} saved place(s) will be used and ask them to confirm before calling generate_itinerary.`,
     "When the user asks about places or a destination, call search_city.",
     "When the user wants to plan a trip, call create_itinerary first, wait for its response to get the id, then call generate_itinerary using that id.",
     "If a function returns an error field, always relay that error message to the user exactly — never assume success.",
@@ -132,7 +136,7 @@ export async function POST(req: Request) {
       const parts = await Promise.all(
         calls.map(async (call) => {
           const args = (call.args ?? {}) as Record<string, unknown>;
-          const response = await executeFunction(call.name, args, userId, sideEffects);
+          const response = await executeFunction(call.name, args, userId, sideEffects, ctx);
           return { functionResponse: { name: call.name, response } };
         })
       );
@@ -176,8 +180,8 @@ async function executeFunction(
   name: string,
   args: Record<string, unknown>,
   userId: string | undefined,
-  sideEffects: ChatSideEffect[]
-
+  sideEffects: ChatSideEffect[],
+  ctx: { selectedSavedCount?: number } = {}
 ): Promise<Record<string, unknown>> {
   if (name === "search_city") {
     const city = String(args.city ?? "").trim();
@@ -225,8 +229,10 @@ async function executeFunction(
     const perDay = Math.min(Math.max(Math.round(Number(args.perDay) || 3), 1), 8);
     const shuffle = Boolean(args.shuffle);
 
-    sideEffects.push({ type: "generate", itineraryId, perDay, shuffle });
-    return { result: `Generating schedule for "${itin.title}" across ${itin.daysCount} day(s) using your saved places.` };
+    const useSelected = (ctx.selectedSavedCount ?? 0) > 0;
+    sideEffects.push({ type: "generate", itineraryId, perDay, shuffle, useSelected });
+    const scope = useSelected ? `${ctx.selectedSavedCount} selected place(s)` : "all saved places";
+    return { result: `Generating schedule for "${itin.title}" across ${itin.daysCount} day(s) using ${scope}.` };
   }
 
   return { error: `Unknown function: ${name}` };

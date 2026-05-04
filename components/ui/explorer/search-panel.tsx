@@ -69,7 +69,7 @@ type ChatMessage = {
 type ChatSideEffect =
   | { type: "search"; query: string }
   | { type: "refresh_itineraries"; selectId?: string }
-  | { type: "generate"; itineraryId: string; perDay: number; shuffle: boolean };
+  | { type: "generate"; itineraryId: string; perDay: number; shuffle: boolean; useSelected: boolean };
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
@@ -587,6 +587,7 @@ export default function SearchPanel() {
           messages: newMessages,
           context: {
             savedCount: saved.length,
+            selectedSavedCount: selectedSavedCount,
             itineraryCount: itineraries.length,
             activeItineraryId: itineraryId ?? undefined,
             activeItineraryTitle: selectedItinerary?.title,
@@ -618,6 +619,9 @@ export default function SearchPanel() {
               mode: "replace",
               perDay: effect.perDay,
               shuffle: effect.shuffle,
+              ...(effect.useSelected && selectedSavedIdArray.length > 0
+                ? { placeIds: selectedSavedIdArray }
+                : {}),
             });
             const items = await fetchItineraryItems(effect.itineraryId);
             setItineraryItems(items);
