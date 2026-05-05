@@ -55,7 +55,7 @@ const GENERATE_FN = {
         description:
           "ID of the itinerary to populate — use the id returned by create_itinerary, or from context",
       },
-      perDay: { type: "NUMBER", description: "Places per day, 1–8 (default 3)" },
+      perDay: { type: "NUMBER", description: "Maximum places per day, 1–8. Omit to let the app decide." },
       shuffle: { type: "BOOLEAN", description: "Randomise place order" },
     },
     required: ["itineraryId"],
@@ -105,8 +105,10 @@ export async function POST(req: Request) {
       ? `The user has ${ctx.selectedSavedCount} place(s) selected — generation will use only those selected places.`
       : `No places are selected — if the user asks to generate, warn them that ALL ${ctx.savedCount ?? 0} saved place(s) will be used and ask them to confirm before calling generate_itinerary.`,
     "When the user asks about places or a destination, call search_city.",
-    "When the user wants to plan a trip, call create_itinerary first, wait for its response to get the id, then call generate_itinerary using that id.",
+    "When the user asks to both create AND generate in the same message: call create_itinerary, receive its response to get the id, then immediately call generate_itinerary using that id — do NOT stop to ask the user for confirmation between the two calls.",
+    "When the user only asks to create an itinerary (no mention of generating): call create_itinerary only, then ask if they want to generate a schedule.",
     "If a function returns an error field, always relay that error message to the user exactly — never assume success.",
+    "Never state how many places per day were added — the actual distribution is determined by the app after you respond and may differ from the requested amount.",
     "Keep replies short. Do not repeat tool return values verbatim.",
   ].join("\n");
 
@@ -232,7 +234,7 @@ async function executeFunction(
     const useSelected = (ctx.selectedSavedCount ?? 0) > 0;
     sideEffects.push({ type: "generate", itineraryId, perDay, shuffle, useSelected });
     const scope = useSelected ? `${ctx.selectedSavedCount} selected place(s)` : "all saved places";
-    return { result: `Generating schedule for "${itin.title}" across ${itin.daysCount} day(s) using ${scope}.` };
+    return { result: `Generating schedule for "${itin.title}" across ${itin.daysCount} day(s), up to ${perDay} place(s) per day, using ${scope}. Actual distribution depends on how many places are available.` };
   }
 
   return { error: `Unknown function: ${name}` };
