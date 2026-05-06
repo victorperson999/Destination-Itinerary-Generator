@@ -113,27 +113,37 @@ export async function POST(req: Request) {
       : "No active itinerary selected.",
 
     hasSelections
-      ? `The user has ${ctx.selectedSavedCount} place(s) selected —` +
-        " generation will use only those selected places."
-      : `No places are selected —` +
-        ` if the user expresses any intent to generate or fill a schedule,` +
-        ` warn them that ALL ${ctx.savedCount ?? 0} saved place(s) will be used` +
-        " and ask them to confirm before calling generate_itinerary.",
+      ? `Generation scope: ${ctx.selectedSavedCount} selected place(s) will be used when you call generate_itinerary.`
+      : `Generation scope: no places are selected, so ALL ${ctx.savedCount ?? 0} saved place(s) would be used.` +
+        " Before calling generate_itinerary, warn the user and ask them to confirm" +
+        " (or to select specific places first).",
 
     "When the user expresses any interest in exploring, finding, discovering, or learning about" +
       " places, attractions, points of interest, or destinations —" +
       " regardless of exact wording — call search_city.",
 
-    hasSelections
-      ? "The user has places selected. MANDATORY 2-step procedure for ANY trip/itinerary intent:" +
-        " Step 1: call create_itinerary and receive its response to get the new id." +
-        " Step 2: immediately call generate_itinerary using the id from Step 1." +
-        " You MUST complete both steps in the same turn. Never stop after Step 1." +
-        " Never use activeItineraryId from context — always use the id returned by create_itinerary."
-      : "Whenever the user expresses any intent to plan, create, make, build, organize," +
-        " or set up a trip or itinerary — regardless of exact wording —" +
-        " call create_itinerary only, then tell them to save and select some places" +
-        " so a schedule can be generated.",
+    ctx.activeItineraryId
+      ? "Itinerary intent — pick ONE path based on the user's wording:" +
+        " (PATH A) FILL the active itinerary listed above. Triggered by phrases like" +
+        " 'fill it', 'regenerate', 'use my selections', 'add to my trip', 'generate now'," +
+        " or any reference to the current/this/my existing itinerary." +
+        " Action: call generate_itinerary with itineraryId set to the active itinerary ID above." +
+        " Do NOT create a new itinerary in this case." +
+        " (PATH B) NEW itinerary. Triggered by phrases like 'new trip', 'another city'," +
+        " 'plan a trip to X', or a title clearly different from the active one." +
+        (hasSelections
+          ? " Action: MANDATORY 2-step in the SAME turn —" +
+            " Step 1 call create_itinerary, Step 2 call generate_itinerary using the id" +
+            " RETURNED by create_itinerary (NOT the active id). Never stop after Step 1."
+          : " Action: call create_itinerary only, then tell the user to save and select" +
+            " some places before generating.")
+      : "There is no active itinerary." +
+        (hasSelections
+          ? " For ANY trip/itinerary intent: MANDATORY 2-step in the SAME turn —" +
+            " Step 1 call create_itinerary, Step 2 call generate_itinerary using the id" +
+            " RETURNED by create_itinerary. Never stop after Step 1."
+          : " For ANY trip/itinerary intent: call create_itinerary only, then tell the user" +
+            " to save and select some places before generating."),
 
     "If a function returns an error field, always relay that error message to the user exactly —" +
       " never assume success.",
@@ -212,13 +222,9 @@ function buildFallbackMessage(effects: ChatSideEffect[]): string {
   return "Done!";
 }
 
-async function executeFunction(
-  name: string,
-  args: Record<string, unknown>,
-  userId: string | undefined,
-  sideEffects: ChatSideEffect[],
-  ctx: { selectedSavedCount?: number } = {}
-): Promise<Record<string, unknown>> {
+async function executeFunction(name: string, args: Record<string, unknown>,userId: string | undefined,
+                              sideEffects: ChatSideEffect[], ctx: { selectedSavedCount?: number } = {} 
+                              ): Promise<Record<string, unknown>> {
   if (name === "search_city") {
     const city = String(args.city ?? "").trim();
     if (!city) return { error: "city is required" };

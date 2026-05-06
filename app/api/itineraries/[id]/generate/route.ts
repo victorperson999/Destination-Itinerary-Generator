@@ -4,7 +4,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import next from "next";
 import { getRedis } from "@/lib/redis";
 
 function itemsCacheKey(userId: string, itineraryId: string) {
@@ -42,38 +41,48 @@ function dist2(a: { lat: number; lon: number}, b: { lat: number; lon: number}){
 
 function assignDays(places: P[], daysCount: number): P[][] {
     const withCoords = places.filter(
-        (p) => typeof p.lat == "number" && typeof p.lon) as Array<P & { lat: number; lon: number}>;
-    
-    const buckets: P[][] = Array.from({ length: daysCount}, () => []);
+        (p): p is P & { lat: number; lon: number } =>
+            typeof p.lat === "number" && typeof p.lon === "number"
+    );
 
-    if (withCoords.length >=2){
-        const meanLat = withCoords.reduce((s,p) => s + p.lat, 0) / withCoords.length;
-        const meanLon = withCoords.reduce((s,p) => s + p.lon, 0) / withCoords.length;
+    const buckets: P[][] = Array.from({ length: daysCount }, () => []);
 
-        const sorted = [...withCoords].sort((a,b) => {
+    if (withCoords.length >= 2) {
+        const meanLat = withCoords.reduce((s, p) => s + p.lat, 0) / withCoords.length;
+        const meanLon = withCoords.reduce((s, p) => s + p.lon, 0) / withCoords.length;
+
+        const sorted = [...withCoords].sort((a, b) => {
             const aa = Math.atan2(a.lat - meanLat, a.lon - meanLon);
             const bb = Math.atan2(b.lat - meanLat, b.lon - meanLon);
             return aa - bb;
         });
-        // chunk evenly=>
-        sorted.forEach((p, i) => buckets[i%daysCount].push(p))
 
-        const noCoords = places.filter((p) => !(typeof p.lat == "number" && typeof p.lon == "number"));
-        noCoords.forEach((p,i) => buckets[i%daysCount].push(p));
+        // Contiguous angle slices: Day 0 = first arc, Day 1 = next arc, etc.
+        // Round-robin (i % daysCount) would interleave clusters and defeat the sweep.
+        sorted.forEach((p, i) => {
+            const day = Math.min(
+                Math.floor((i * daysCount) / sorted.length),
+                daysCount - 1
+            );
+            buckets[day].push(p);
+        });
+
+        const noCoords = places.filter(
+            (p) => !(typeof p.lat === "number" && typeof p.lon === "number")
+        );
+        noCoords.forEach((p, i) => buckets[i % daysCount].push(p));
 
         return buckets;
     }
 
-    const sorted = [...places].sort((a,b) => {
+    const sorted = [...places].sort((a, b) => {
         const ca = a.category ?? "";
         const cb = b.category ?? "";
-        if (ca !== cb){
-            return ca.localeCompare(cb);
-        }
+        if (ca !== cb) return ca.localeCompare(cb);
         return a.name.localeCompare(b.name);
-    })
+    });
 
-    sorted.forEach((p, i) => buckets[i%daysCount].push(p))
+    sorted.forEach((p, i) => buckets[i % daysCount].push(p));
     return buckets;
 }
 
@@ -157,65 +166,68 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         );
     }
 
-    let eligible = saved.map(
-        (s) => s.place)
-        .filter((p) => typeof p.lat == "number" && typeof p.lon == "number");
-       
-    
-    if (eligible.length === 0){
+    let eligible = saved
+        .map((s) => s.place)
+        .filter((p) => typeof p.lat === "number" && typeof p.lon === "number");
+
+    if (eligible.length === 0) {
         return NextResponse.json(
             { error: "None of your saved places have location coordinates and cannot be scheduled." },
             { status: 400 }
         );
     }
 
-    if (shuffle){
+    if (shuffle) {
         eligible = eligible
-            .map((p) => ({p, r: Math.random()}))
-            .sort((a,b) => a.r - b.r)
+            .map((p) => ({ p, r: Math.random() }))
+            .sort((a, b) => a.r - b.r)
             .map((x) => x.p);
     }
 
-    const maxToCreate = Math.min(eligible.length, itinerary.daysCount * perDay);
-    const chosen = eligible.slice(0, maxToCreate);
+    // 1) Distribute every eligible place across days via angle sweep
+    // 2) Trim each day to at most `perDay` places (preserves clustering;
+    //    a global cap would just drop the tail of createdAt order)
+    // 3) Order each day via nearest-neighbour for a sensible walking path
+    const buckets = assignDays(eligible, itinerary.daysCount);
+    const orderedByDay = buckets.map((b) => orderWithinDay(b.slice(0, perDay)));
+    const totalChosen = orderedByDay.reduce((s, d) => s + d.length, 0);
 
     const created = await prisma.$transaction(async (tx) => {
-        if (mode == "replace"){
-            await tx.itineraryItem.deleteMany({ where: { itineraryId: id}});
+        if (mode === "replace") {
+            await tx.itineraryItem.deleteMany({ where: { itineraryId: id } });
         }
-        // replace
+
         const nextOrderByDay = Array.from({ length: itinerary.daysCount }, () => 0);
 
-        if (mode == "append"){
+        if (mode === "append") {
             const existing = await tx.itineraryItem.findMany({
-                where: { itineraryId: id},
-                select: { dayIndex: true, order: true},
+                where: { itineraryId: id },
+                select: { dayIndex: true, order: true },
             });
-
-            for (const it of existing){
+            for (const it of existing) {
                 const d = it.dayIndex;
-                if (d >= 0 && d < nextOrderByDay.length){
+                if (d >= 0 && d < nextOrderByDay.length) {
                     nextOrderByDay[d] = Math.max(nextOrderByDay[d], it.order + 1);
                 }
             }
         }
 
-        const out = []
-        for (let i = 0; i<chosen.length; i++){
-            const dayIndex = i % itinerary.daysCount;
-            const order = nextOrderByDay[dayIndex]++;
-
-            const item = await tx.itineraryItem.create({
-                data: {
-                itineraryId: id,
-                placeId: chosen[i].id,
-                dayIndex,
-                order,
-                note: null,
-            },
-            include: { place: true},
-            });
-            out.push(item)
+        const out = [];
+        for (let dayIndex = 0; dayIndex < orderedByDay.length; dayIndex++) {
+            for (const place of orderedByDay[dayIndex]) {
+                const order = nextOrderByDay[dayIndex]++;
+                const item = await tx.itineraryItem.create({
+                    data: {
+                        itineraryId: id,
+                        placeId: place.id,
+                        dayIndex,
+                        order,
+                        note: null,
+                    },
+                    include: { place: true },
+                });
+                out.push(item);
+            }
         }
         return out;
     });
@@ -229,10 +241,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         ok: true,
         count: created.length,
         items: created,
-        debug: { 
-            savedCount: saved.length, 
-            eligibleCount: eligible.length, 
-            chosenCount: chosen.length,
+        debug: {
+            savedCount: saved.length,
+            eligibleCount: eligible.length,
+            chosenCount: totalChosen,
             selectedCount: placeIds?.length ?? null,
             mode,
             perDay,

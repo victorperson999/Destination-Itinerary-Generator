@@ -4,7 +4,9 @@
       "Bash(node *)",
       "Bash(pnpm add *)",
       "Bash(claude doctor *)",
-      "PowerShell(claude doctor *)"
+      "PowerShell(claude doctor *)",
+      "Bash(rm \"C:\\\\Users\\\\victo\\\\local-explorer-itinerary\\\\app\\\\api\\\\redis-test\\\\route.ts\")",
+      "Bash(rmdir \"C:\\\\Users\\\\victo\\\\local-explorer-itinerary\\\\app\\\\api\\\\redis-test\")"
     ]
   }
 }

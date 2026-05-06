@@ -602,9 +602,8 @@ export default function SearchPanel() {
       }
 
       const data = (await res.json()) as { message: string; sideEffects: ChatSideEffect[] };
-      if (data.message) {
-        setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
-      }
+
+      let genError: string | null = null;
 
       for (const effect of data.sideEffects ?? []) {
         if (effect.type === "search") {
@@ -626,10 +625,18 @@ export default function SearchPanel() {
             const items = await fetchItineraryItems(effect.itineraryId);
             setItineraryItems(items);
             setItineraryId(effect.itineraryId);
-          } catch {
-            // generation failure is non-fatal — user can trigger manually
+          } catch (e) {
+            genError = e instanceof Error ? e.message : "Generation failed";
           }
         }
+      }
+
+      const assistantText = genError
+        ? `Generation failed: ${genError}`
+        : data.message;
+
+      if (assistantText) {
+        setMessages((prev) => [...prev, { role: "assistant", content: assistantText }]);
       }
     } catch (e: any) {
       setMessages((prev) => [
