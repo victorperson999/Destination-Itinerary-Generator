@@ -55,7 +55,10 @@ const GENERATE_FN = {
         description:
           "ID of the itinerary to populate — use the id returned by create_itinerary, or from context",
       },
-      perDay: { type: "NUMBER", description: "Maximum places per day, 1–8. Omit to let the app decide." },
+      perDay: {
+        type: "NUMBER",
+        description: "Maximum places per day, 1–8. Omit to let the app decide.",
+      },
       shuffle: { type: "BOOLEAN", description: "Randomise place order" },
     },
     required: ["itineraryId"],
@@ -92,23 +95,53 @@ export async function POST(req: Request) {
   }));
   const lastMsg = messages[messages.length - 1];
 
+  const hasSelections = (ctx.selectedSavedCount ?? 0) > 0;
+
   const systemInstruction = [
     "You are a concise, action-oriented travel planning assistant embedded in an itinerary planner app.",
+
     userId
       ? "The user is signed in and can search, create itineraries, and generate schedules."
       : "The user is not signed in. Only search_city is available — politely suggest signing in for planning features.",
-    `App state: ${ctx.savedCount ?? 0} saved place(s) (${ctx.selectedSavedCount ?? 0} selected), ${ctx.itineraryCount ?? 0} itinerary/itineraries.`,
+
+    `App state: ${ctx.savedCount ?? 0} saved place(s)` +
+      ` (${ctx.selectedSavedCount ?? 0} selected),` +
+      ` ${ctx.itineraryCount ?? 0} itinerary/itineraries.`,
+
     ctx.activeItineraryId
       ? `Active itinerary: "${ctx.activeItineraryTitle ?? "unknown"}" (ID: ${ctx.activeItineraryId}).`
       : "No active itinerary selected.",
-    ctx.selectedSavedCount && ctx.selectedSavedCount > 0
-      ? `The user has ${ctx.selectedSavedCount} place(s) selected — generation will use only those selected places.`
-      : `No places are selected — if the user asks to generate, warn them that ALL ${ctx.savedCount ?? 0} saved place(s) will be used and ask them to confirm before calling generate_itinerary.`,
-    "When the user asks about places or a destination, call search_city.",
-    "When the user asks to both create AND generate in the same message: call create_itinerary, receive its response to get the id, then immediately call generate_itinerary using that id — do NOT stop to ask the user for confirmation between the two calls.",
-    "When the user only asks to create an itinerary (no mention of generating): call create_itinerary only, then ask if they want to generate a schedule.",
-    "If a function returns an error field, always relay that error message to the user exactly — never assume success.",
-    "Never state how many places per day were added — the actual distribution is determined by the app after you respond and may differ from the requested amount.",
+
+    hasSelections
+      ? `The user has ${ctx.selectedSavedCount} place(s) selected —` +
+        " generation will use only those selected places."
+      : `No places are selected —` +
+        ` if the user expresses any intent to generate or fill a schedule,` +
+        ` warn them that ALL ${ctx.savedCount ?? 0} saved place(s) will be used` +
+        " and ask them to confirm before calling generate_itinerary.",
+
+    "When the user expresses any interest in exploring, finding, discovering, or learning about" +
+      " places, attractions, points of interest, or destinations —" +
+      " regardless of exact wording — call search_city.",
+
+    hasSelections
+      ? "The user has places selected. MANDATORY 2-step procedure for ANY trip/itinerary intent:" +
+        " Step 1: call create_itinerary and receive its response to get the new id." +
+        " Step 2: immediately call generate_itinerary using the id from Step 1." +
+        " You MUST complete both steps in the same turn. Never stop after Step 1." +
+        " Never use activeItineraryId from context — always use the id returned by create_itinerary."
+      : "Whenever the user expresses any intent to plan, create, make, build, organize," +
+        " or set up a trip or itinerary — regardless of exact wording —" +
+        " call create_itinerary only, then tell them to save and select some places" +
+        " so a schedule can be generated.",
+
+    "If a function returns an error field, always relay that error message to the user exactly —" +
+      " never assume success.",
+
+    "Never state how many places per day were added —" +
+      " the actual distribution is determined by the app after you respond" +
+      " and may differ from the requested amount.",
+
     "Keep replies short. Do not repeat tool return values verbatim.",
   ].join("\n");
 
@@ -150,6 +183,7 @@ export async function POST(req: Request) {
     const text = result.response.text().trim();
     const message = text || buildFallbackMessage(sideEffects);
     return NextResponse.json({ message, sideEffects });
+
   } catch (e: any) {
     if (e?.status === 429) {
       return NextResponse.json(
@@ -201,24 +235,25 @@ async function executeFunction(
     try {
       const itin = await prisma.itinerary.create({ data: { title, daysCount, userId } });
       const r = await getRedis();
-      if (r){
+      if (r) {
         r.del(`itineraries:v1:user:${userId}`).catch(() => {});
       }
       sideEffects.push({ type: "refresh_itineraries", selectId: itin.id });
       return { result: `Created itinerary "${itin.title}" (${daysCount} days)`, id: itin.id };
     } catch (e: any) {
-      if (e?.code === "P2002"){
+      if (e?.code === "P2002") {
         return { error: `An itinerary named "${title}" already exists` };
       }
       return { error: e?.message ?? "Failed to create itinerary" };
     }
-
   }
 
   if (name === "generate_itinerary") {
     if (!userId) return { error: "User is not signed in" };
     const itineraryId = String(args.itineraryId ?? "").trim();
-    if (!itineraryId) return { error: "No itinerary is selected. Please create one or ask the user to select an itinerary first." };
+    if (!itineraryId) {
+      return { error: "No itinerary is selected. Please create one or ask the user to select an itinerary first." };
+    }
 
     const itin = await prisma.itinerary.findFirst({ where: { id: itineraryId, userId } });
     if (!itin) return { error: "Itinerary not found or not owned by user" };
@@ -230,11 +265,19 @@ async function executeFunction(
 
     const perDay = Math.min(Math.max(Math.round(Number(args.perDay) || 3), 1), 8);
     const shuffle = Boolean(args.shuffle);
-
     const useSelected = (ctx.selectedSavedCount ?? 0) > 0;
+
     sideEffects.push({ type: "generate", itineraryId, perDay, shuffle, useSelected });
-    const scope = useSelected ? `${ctx.selectedSavedCount} selected place(s)` : "all saved places";
-    return { result: `Generating schedule for "${itin.title}" across ${itin.daysCount} day(s), up to ${perDay} place(s) per day, using ${scope}. Actual distribution depends on how many places are available.` };
+
+    const scope = useSelected
+      ? `${ctx.selectedSavedCount} selected place(s)`
+      : "all saved places";
+    return {
+      result:
+        `Generating schedule for "${itin.title}" across ${itin.daysCount} day(s),` +
+        ` up to ${perDay} place(s) per day, using ${scope}.` +
+        " Actual distribution depends on how many places are available.",
+    };
   }
 
   return { error: `Unknown function: ${name}` };
