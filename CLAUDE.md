@@ -109,4 +109,14 @@ All protected API routes call `getServerSession(authOptions)` and extract `(sess
 - `app/layout.tsx` — root layout (not listed, but implied)
 - `components/ui/explorer/search-panel.tsx` — all application state and UI
 - `components/auth-button.tsx` — sign in/out button
+- `components/theme-toggle.tsx` — light/dark theme switch; toggles the `.dark` class on `<html>` and persists to `localStorage` (no `next-themes` dependency)
 - `components/ui/` — shadcn/ui primitives (Badge, Button, Card, Input, Separator)
+
+## Changelog
+
+### 2026-05-19 — UI polish pass (visual only, no logic changes)
+- **`app/globals.css`** — Replaced the all-grayscale theme with a travel-themed palette: teal/ocean `--primary` and warm sand `--accent`/`--secondary`, with faint cool/warm tints on backgrounds. Updated both `:root` (light) and `.dark` blocks plus matching `--ring`.
+- **`app/page.tsx`** — Fixed invalid container class `max-w-2x1` → `max-w-5xl` (was leaving the panel unconstrained); added a subtle gradient background to `<main>`.
+- **`app/layout.tsx`** — Added an inline no-flash theme script in `<head>` that applies the saved/preferred theme before paint; added `suppressHydrationWarning` on `<html>`.
+- **`components/theme-toggle.tsx`** (new) — Sun/moon dark-mode toggle button.
+- **`components/ui/explorer/search-panel.tsx`** — Added `MapPin` icon badge to the title and `ThemeToggle` in the header; promoted the Saved/Itinerary section labels to icon headings; hover states on search-result and saved-place rows; selected-place highlight; restyled itinerary day cards with accent-tinted headers and a per-day stop count.

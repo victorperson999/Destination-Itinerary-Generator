@@ -191,6 +191,33 @@ async function removeItineraryItem(itinId: string, itemId: string) {
   return res.json();
 }
 
+// ── CategoryBadge ─────────────────────────────────────────────────────────────
+
+// Full literal class strings (light + dark) so Tailwind's scanner includes them.
+const CATEGORY_BADGE_CLASSES: Record<string, string> = {
+  museums: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-900",
+  historic: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900",
+  architecture: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-900",
+  cultural: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-900",
+  natural: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900",
+  amusements: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-900",
+  religion: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-900",
+  foods: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-900",
+};
+
+const CATEGORY_FALLBACK_CLASS =
+  "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+
+function CategoryBadge({ category, className }: { category?: string | null; className?: string }) {
+  if (!category) return null;
+  const colors = CATEGORY_BADGE_CLASSES[category.toLowerCase()] ?? CATEGORY_FALLBACK_CLASS;
+  return (
+    <Badge variant="outline" className={`${colors} ${className ?? ""}`}>
+      {category}
+    </Badge>
+  );
+}
+
 // ── SearchResultsList ─────────────────────────────────────────────────────────
 
 type SearchResultsListProps = {
@@ -236,7 +263,7 @@ function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: Sea
                   <p className="text-sm text-muted-foreground">{r.address}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {r.category ? <Badge variant="secondary">{r.category}</Badge> : null}
+                  <CategoryBadge category={r.category} />
                   <Button
                     type="button"
                     size="sm"
@@ -846,7 +873,7 @@ export default function SearchPanel() {
                       </div>
                       <div className="flex items-center justify-between gap-1">
                         {s.category ? (
-                          <Badge variant="secondary" className="text-xs">{s.category}</Badge>
+                          <CategoryBadge category={s.category} className="text-xs" />
                         ) : (
                           <span />
                         )}
@@ -1101,15 +1128,20 @@ export default function SearchPanel() {
                           <p className="text-sm text-muted-foreground">No items.</p>
                         ) : (
                           <ul className="space-y-2">
-                            {dayItems.map((it) => (
+                            {dayItems.map((it, idx) => (
                               <li key={it.id} className="flex items-start justify-between gap-3">
-                                <div>
-                                  <p className="font-medium">{it.place.name}</p>
-                                  {it.place.address ? (
-                                    <p className="text-sm text-muted-foreground">{it.place.address}</p>
-                                  ) : null}
+                                <div className="flex items-start gap-3">
+                                  <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                                    {idx + 1}
+                                  </span>
+                                  <div>
+                                    <p className="font-medium">{it.place.name}</p>
+                                    {it.place.address ? (
+                                      <p className="text-sm text-muted-foreground">{it.place.address}</p>
+                                    ) : null}
+                                  </div>
                                 </div>
-                                {it.place.category ? <Badge variant="secondary">{it.place.category}</Badge> : null}
+                                <CategoryBadge category={it.place.category} />
                               </li>
                             ))}
                           </ul>
