@@ -9,7 +9,8 @@ import { Separator } from "@/components/ui/separator";
 
 import { useSession, signIn } from "next-auth/react";
 import AuthButton from "@/components/auth-button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import ThemeToggle from "@/components/theme-toggle";
+import { ChevronLeft, ChevronRight, MapPin, Bookmark, CalendarDays } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -228,7 +229,7 @@ function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: Sea
       <div className="max-h-96 overflow-y-auto rounded-lg border">
         <ul className="divide-y">
           {visible.map((r) => (
-            <li key={r.providerId} className="p-3">
+            <li key={r.providerId} className="p-3 transition-colors hover:bg-accent/30">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">{r.name}</p>
@@ -677,12 +678,20 @@ export default function SearchPanel() {
       <CardHeader>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-2xl">Destination Itinerary Generator</CardTitle>
-            <CardDescription>
+            <CardTitle className="flex items-center gap-2 text-2xl">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <MapPin size={20} />
+              </span>
+              Destination Itinerary Generator
+            </CardTitle>
+            <CardDescription className="mt-1">
               Search for a City to discover its attractions and build a travel/vacation Itinerary!
             </CardDescription>
           </div>
-          <AuthButton />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <AuthButton />
+          </div>
         </div>
       </CardHeader>
 
@@ -749,9 +758,10 @@ export default function SearchPanel() {
         {/* Saved section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-medium">
-              Saved{" "}
-              <span className="text-xs text-muted-foreground">
+            <p className="flex items-center gap-2 text-base font-semibold">
+              <Bookmark size={16} className="text-primary" />
+              Saved
+              <span className="text-xs font-normal text-muted-foreground">
                 ({selectedSavedCount} selected)
               </span>
             </p>
@@ -816,7 +826,12 @@ export default function SearchPanel() {
             <div className="max-h-64 overflow-y-auto">
               <ul className="grid grid-cols-2 gap-2">
                 {saved.map((s) => (
-                  <li key={s.placeId} className="rounded-lg border p-2">
+                  <li
+                    key={s.placeId}
+                    className={`rounded-lg border p-2 transition-colors hover:border-primary/40 hover:bg-accent/30 ${
+                      selectedSavedIds.has(s.placeId) ? "border-primary/60 bg-primary/5" : ""
+                    }`}
+                  >
                     <div className="flex flex-col gap-1.5">
                       <div className="flex items-start gap-2">
                         <input
@@ -878,7 +893,10 @@ export default function SearchPanel() {
         {/* Itinerary section */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">Itinerary</p>
+            <p className="flex items-center gap-2 text-base font-semibold">
+              <CalendarDays size={16} className="text-primary" />
+              Itinerary
+            </p>
             {itinLoading ? <p className="text-xs text-muted-foreground">Loading…</p> : null}
           </div>
 
@@ -1070,12 +1088,19 @@ export default function SearchPanel() {
                   {Array.from({ length: selectedItinerary.daysCount }, (_, day) => {
                     const dayItems = itemsByDay.get(day) ?? [];
                     return (
-                      <div key={day} className="rounded-lg border p-3">
-                        <p className="text-sm font-medium">Day {day + 1}</p>
+                      <div key={day} className="overflow-hidden rounded-lg border">
+                        <p className="flex items-center gap-2 border-b bg-accent/40 px-3 py-2 text-sm font-semibold">
+                          <CalendarDays size={14} className="text-primary" />
+                          Day {day + 1}
+                          <span className="ml-auto text-xs font-normal text-muted-foreground">
+                            {dayItems.length} {dayItems.length === 1 ? "stop" : "stops"}
+                          </span>
+                        </p>
+                        <div className="p-3">
                         {dayItems.length === 0 ? (
                           <p className="text-sm text-muted-foreground">No items.</p>
                         ) : (
-                          <ul className="mt-2 space-y-2">
+                          <ul className="space-y-2">
                             {dayItems.map((it) => (
                               <li key={it.id} className="flex items-start justify-between gap-3">
                                 <div>
@@ -1089,6 +1114,7 @@ export default function SearchPanel() {
                             ))}
                           </ul>
                         )}
+                        </div>
                       </div>
                     );
                   })}
