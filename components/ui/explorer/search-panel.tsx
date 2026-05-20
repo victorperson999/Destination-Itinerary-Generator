@@ -212,7 +212,7 @@ function CategoryBadge({ category, className }: { category?: string | null; clas
   if (!category) return null;
   const colors = CATEGORY_BADGE_CLASSES[category.toLowerCase()] ?? CATEGORY_FALLBACK_CLASS;
   return (
-    <Badge variant="outline" className={`${colors} ${className ?? ""}`}>
+    <Badge variant="outline" className={[colors, className].filter(Boolean).join(" ")}>
       {category}
     </Badge>
   );
