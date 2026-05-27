@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Plan before code**: For every coding task, present a written plan (files to change, approach, edge cases) and wait for explicit user approval before writing any code.
 - **Show your changes**: After writing code, summarize every file that was modified and what changed in each.
+- **Log this session**: When the user says "log this session", append a new dated entry to the top of the `## Changelog` section below, summarizing what was implemented in the session as bullet points per file changed (matching the existing entry format). This builds a running reference of prior work for future sessions.
 
 ## Commands
 
@@ -113,6 +114,16 @@ All protected API routes call `getServerSession(authOptions)` and extract `(sess
 - `components/ui/` — shadcn/ui primitives (Badge, Button, Card, Input, Separator)
 
 ## Changelog
+
+### 2026-05-26 — Chat panel polish + resizable Saved section
+- **`components/ui/explorer/search-panel.tsx`** —
+  - Renamed the right-side chat panel heading from "AI Assistant" to "Assistant".
+  - Added a visible 2px left border (`border-l-2`) and `shadow-md` to the chat panel card so its edges read clearly against the toggle tab when popped out.
+  - Made the Saved section vertically resizable. Replaced the static `<Separator />` between Saved and Itinerary with a 12px-tall draggable divider (1px line that thickens and tints `primary/60` on hover, `cursor-row-resize`). Added `savedHeight`, `savedAtMax` state and `savedScrollRef`, `savedListRef` refs.
+  - Drag bounds: minimum = original `max-h-64` (256px) so the section can never collapse past its default; maximum = the inner `<ul>`'s natural `offsetHeight` so the user can't drag past the last item.
+  - Drag uses a re-anchor pattern (`lastY` / `currentHeight` advanced only by `actualDelta`) so the cursor stays glued to the divider line in both directions, even after pushing past a bound — see [[feedback-drag-reanchor]] in memory.
+  - Auto-resize effect: when items are added/removed while the user is at the natural max (`savedAtMax === true`), the height auto-fits the new content height; if it drops to ≤ 256px, reverts to the default `max-h-64` behavior. No auto-resize when at an intermediate height.
+- **`CLAUDE.md`** — Added a "Log this session" workflow rule documenting that "log this session" appends a dated entry to the Changelog.
 
 ### 2026-05-19 — UI polish pass (visual only, no logic changes)
 - **`app/globals.css`** — Replaced the all-grayscale theme with a travel-themed palette: teal/ocean `--primary` and warm sand `--accent`/`--secondary`, with faint cool/warm tints on backgrounds. Updated both `:root` (light) and `.dark` blocks plus matching `--ring`.
