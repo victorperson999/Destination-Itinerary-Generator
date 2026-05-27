@@ -427,6 +427,13 @@ export default function SearchPanel() {
       if (dragCleanupRef.current) dragCleanupRef.current();
     };
   }, []);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dragCleanupRef.current) dragCleanupRef.current();
+    };
+  }, []);
 
   const { status } = useSession();
   const authed = status === "authenticated";
