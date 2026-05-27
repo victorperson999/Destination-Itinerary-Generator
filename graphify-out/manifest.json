@@ -1,0 +1,242 @@
+{
+  "C:\\Users\\victo\\local-explorer-itinerary\\components.json": {
+    "mtime": 1767552131.451524,
+    "ast_hash": "60cac9e3aa0678b49c966fc9649fee82",
+    "semantic_hash": "60cac9e3aa0678b49c966fc9649fee82"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\eslint.config.mjs": {
+    "mtime": 1767552131.4535239,
+    "ast_hash": "6c4307ffa009658f5c97f5629094c0c2",
+    "semantic_hash": "6c4307ffa009658f5c97f5629094c0c2"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\next.config.ts": {
+    "mtime": 1767552131.454854,
+    "ast_hash": "025f4fcb6024b3524d19492cf7ce54a2",
+    "semantic_hash": "025f4fcb6024b3524d19492cf7ce54a2"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\package.json": {
+    "mtime": 1778032742.7890632,
+    "ast_hash": "1031364dd8151430088b0fe9e98b3e81",
+    "semantic_hash": "1031364dd8151430088b0fe9e98b3e81"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\payload.json": {
+    "mtime": 1767552131.4558537,
+    "ast_hash": "2147785eba3661f4bd518bc7fbdcf2a8",
+    "semantic_hash": "2147785eba3661f4bd518bc7fbdcf2a8"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\postcss.config.mjs": {
+    "mtime": 1767552131.4568539,
+    "ast_hash": "481fac0fdecd70e1821cc30b86030c1a",
+    "semantic_hash": "481fac0fdecd70e1821cc30b86030c1a"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\prisma.config.ts": {
+    "mtime": 1767552131.4568539,
+    "ast_hash": "fb2cda20db6a28bd8aadae2e6b3f065c",
+    "semantic_hash": "fb2cda20db6a28bd8aadae2e6b3f065c"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\tsconfig.json": {
+    "mtime": 1767552131.4608545,
+    "ast_hash": "ab575e944f15d39a5486cf9fca385c5e",
+    "semantic_hash": "ab575e944f15d39a5486cf9fca385c5e"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\.claude\\settings.json": {
+    "mtime": 1777335462.4270227,
+    "ast_hash": "e2b688f014652a64447f3ff680a23883",
+    "semantic_hash": "e2b688f014652a64447f3ff680a23883"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\.claude\\settings.local.json": {
+    "mtime": 1778031590.3808115,
+    "ast_hash": "0f00c5d2e709ec0660621d497c9b2c6d",
+    "semantic_hash": "0f00c5d2e709ec0660621d497c9b2c6d"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\layout.tsx": {
+    "mtime": 1779241605.369187,
+    "ast_hash": "7d24f3485c1446e1b19ac707ebb69834",
+    "semantic_hash": "7d24f3485c1446e1b19ac707ebb69834"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\page.tsx": {
+    "mtime": 1779241586.4636383,
+    "ast_hash": "a8b3b55eeded5ef8cd6e47f48a40a11e",
+    "semantic_hash": "a8b3b55eeded5ef8cd6e47f48a40a11e"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\providers.tsx": {
+    "mtime": 1767552131.451524,
+    "ast_hash": "ccb768bba8bba4edf14e600646aeb1b1",
+    "semantic_hash": "ccb768bba8bba4edf14e600646aeb1b1"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\api\\auth\\[...nextauth]\\route.ts": {
+    "mtime": 1767552131.447524,
+    "ast_hash": "416db28c4ed94be1a5a14bdf4ee855c3",
+    "semantic_hash": "416db28c4ed94be1a5a14bdf4ee855c3"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\api\\chat\\route.ts": {
+    "mtime": 1778032397.3711028,
+    "ast_hash": "9d2b43f2a029460cb3ee32e75199e3c2",
+    "semantic_hash": "9d2b43f2a029460cb3ee32e75199e3c2"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\api\\itineraries\\route.ts": {
+    "mtime": 1771920181.6767666,
+    "ast_hash": "e7407c117032973224ed7b2497e7c325",
+    "semantic_hash": "e7407c117032973224ed7b2497e7c325"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\api\\itineraries\\[id]\\generate\\route.ts": {
+    "mtime": 1778031734.9125228,
+    "ast_hash": "78a68616a7a4d34f28d7b658c62c3e35",
+    "semantic_hash": "78a68616a7a4d34f28d7b658c62c3e35"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\api\\itineraries\\[id]\\items\\route.ts": {
+    "mtime": 1771968340.5502942,
+    "ast_hash": "68ea493e2b7d7044cf533778a727f54d",
+    "semantic_hash": "68ea493e2b7d7044cf533778a727f54d"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\api\\places\\route.ts": {
+    "mtime": 1777335254.8082726,
+    "ast_hash": "31cf2758a40babec2ae7312b42a6f0df",
+    "semantic_hash": "31cf2758a40babec2ae7312b42a6f0df"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\app\\api\\saved\\route.ts": {
+    "mtime": 1771922712.230559,
+    "ast_hash": "5b25bc8aee25559faea12e39c39a02a1",
+    "semantic_hash": "5b25bc8aee25559faea12e39c39a02a1"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\components\\auth-button.tsx": {
+    "mtime": 1777088102.9489815,
+    "ast_hash": "c80c8f550ce51f681340f357f017bb26",
+    "semantic_hash": "c80c8f550ce51f681340f357f017bb26"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\components\\theme-toggle.tsx": {
+    "mtime": 1779241592.2120466,
+    "ast_hash": "9596fe8ed616c7c1008a6a18d2580834",
+    "semantic_hash": "9596fe8ed616c7c1008a6a18d2580834"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\components\\ui\\badge.tsx": {
+    "mtime": 1767552131.4525244,
+    "ast_hash": "beee1c5870159cdbd5f3876f499e185a",
+    "semantic_hash": "beee1c5870159cdbd5f3876f499e185a"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\components\\ui\\button.tsx": {
+    "mtime": 1767552131.4525244,
+    "ast_hash": "75c445103e5ed51dc928a0d95e3aa1c2",
+    "semantic_hash": "75c445103e5ed51dc928a0d95e3aa1c2"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\components\\ui\\card.tsx": {
+    "mtime": 1767552131.4525244,
+    "ast_hash": "47a29c39097f9e68761c5ef152ace1e6",
+    "semantic_hash": "47a29c39097f9e68761c5ef152ace1e6"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\components\\ui\\input.tsx": {
+    "mtime": 1767552131.4535239,
+    "ast_hash": "229513f0e77fbd6da03231cdb66cc50d",
+    "semantic_hash": "229513f0e77fbd6da03231cdb66cc50d"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\components\\ui\\separator.tsx": {
+    "mtime": 1767552131.4535239,
+    "ast_hash": "981488d95a2e21d07ed8acfd3963d7e9",
+    "semantic_hash": "981488d95a2e21d07ed8acfd3963d7e9"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\components\\ui\\explorer\\search-panel.tsx": {
+    "mtime": 1779843692.201753,
+    "ast_hash": "c570ad58cf8f1b9a78eeee35eb6158f9",
+    "semantic_hash": "c570ad58cf8f1b9a78eeee35eb6158f9"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\lib\\auth.ts": {
+    "mtime": 1767552131.454854,
+    "ast_hash": "e2d93522543dc2ea32868166b546b874",
+    "semantic_hash": "e2d93522543dc2ea32868166b546b874"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\lib\\db.ts": {
+    "mtime": 1771812987.4201605,
+    "ast_hash": "85396b81328fec1407a314edef90493c",
+    "semantic_hash": "85396b81328fec1407a314edef90493c"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\lib\\redis.ts": {
+    "mtime": 1771917444.2603035,
+    "ast_hash": "275e602311b8874c3fc6ce926ca7b6eb",
+    "semantic_hash": "275e602311b8874c3fc6ce926ca7b6eb"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\lib\\utils.ts": {
+    "mtime": 1767552131.454854,
+    "ast_hash": "1d8011eb18769078bf77502b220daa5e",
+    "semantic_hash": "1d8011eb18769078bf77502b220daa5e"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\prisma\\migrations\\20251227184755_init\\migration.sql": {
+    "mtime": 1767552131.4568539,
+    "ast_hash": "ad06282fb3545dad3b33666b3b610c47",
+    "semantic_hash": "ad06282fb3545dad3b33666b3b610c47"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\prisma\\migrations\\20251228175240_auth\\migration.sql": {
+    "mtime": 1767552131.4578543,
+    "ast_hash": "fa3f54db488b97086711e5decdce45d0",
+    "semantic_hash": "fa3f54db488b97086711e5decdce45d0"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\prisma\\migrations\\20251229164858_itinerary\\migration.sql": {
+    "mtime": 1767552131.4578543,
+    "ast_hash": "c3d9fd1814b8489a52634cebe4241e73",
+    "semantic_hash": "c3d9fd1814b8489a52634cebe4241e73"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\prisma\\migrations\\20251230040649_places_cache\\migration.sql": {
+    "mtime": 1767552131.458854,
+    "ast_hash": "da2a9310db5174aaeb55e330a0bfafdd",
+    "semantic_hash": "da2a9310db5174aaeb55e330a0bfafdd"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\prisma\\migrations\\20251231035512_add_place_coords\\migration.sql": {
+    "mtime": 1767552131.458854,
+    "ast_hash": "47fab7c5947eca8e7fbc50b4f2f27164",
+    "semantic_hash": "47fab7c5947eca8e7fbc50b4f2f27164"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\prisma\\migrations\\20260103050333_unique_itinerary_title_per_user\\migration.sql": {
+    "mtime": 1767552131.458854,
+    "ast_hash": "09d3637f3c1740ccc9b9fc24c3c647d9",
+    "semantic_hash": "09d3637f3c1740ccc9b9fc24c3c647d9"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\prisma\\migrations\\20260103052727_itinerary_unique_title_per_user\\migration.sql": {
+    "mtime": 1767552131.458854,
+    "ast_hash": "09bedc0bc40d63f9276658b897517076",
+    "semantic_hash": "09bedc0bc40d63f9276658b897517076"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\CLAUDE.md": {
+    "mtime": 1779844145.4540806,
+    "ast_hash": "2ba6dac98b460ddd086e8032bb46b260",
+    "semantic_hash": "2ba6dac98b460ddd086e8032bb46b260"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\docker-compose.yml": {
+    "mtime": 1767552131.4535239,
+    "ast_hash": "14c3482a6382ba29ca3c075e4547b3ac",
+    "semantic_hash": "14c3482a6382ba29ca3c075e4547b3ac"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\pnpm-workspace.yaml": {
+    "mtime": 1767552131.4568539,
+    "ast_hash": "2a705f16efe1f979d5004ccd958ad428",
+    "semantic_hash": "2a705f16efe1f979d5004ccd958ad428"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\README.md": {
+    "mtime": 1777770503.4601727,
+    "ast_hash": "51ec32e1c0c9c7accafaed0d38124c24",
+    "semantic_hash": "51ec32e1c0c9c7accafaed0d38124c24"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\public\\file.svg": {
+    "mtime": 1767552131.459854,
+    "ast_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71",
+    "semantic_hash": "d09f95206c3fa0bb9bd9fefabfd0ea71"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\public\\globe.svg": {
+    "mtime": 1767552131.459854,
+    "ast_hash": "2aaafa6a49b6563925fe440891e32717",
+    "semantic_hash": "2aaafa6a49b6563925fe440891e32717"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\public\\next.svg": {
+    "mtime": 1767552131.4608545,
+    "ast_hash": "8e061864f388b47f33a1c3780831193e",
+    "semantic_hash": "8e061864f388b47f33a1c3780831193e"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\public\\vercel.svg": {
+    "mtime": 1767552131.4608545,
+    "ast_hash": "c0af2f507b369b085b35ef4bbe3bcf1e",
+    "semantic_hash": "c0af2f507b369b085b35ef4bbe3bcf1e"
+  },
+  "C:\\Users\\victo\\local-explorer-itinerary\\public\\window.svg": {
+    "mtime": 1767552131.4608545,
+    "ast_hash": "a2760511c65806022ad20adf74370ff3",
+    "semantic_hash": "a2760511c65806022ad20adf74370ff3"
+  }
+}
