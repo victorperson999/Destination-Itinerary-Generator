@@ -43,3 +43,7 @@ next-env.d.ts
 
 
 /lib/generated/prisma
+
+# graphify — keep outputs, exclude machine-local
+graphify-out/.graphify_python
+graphify-out/cost.json
