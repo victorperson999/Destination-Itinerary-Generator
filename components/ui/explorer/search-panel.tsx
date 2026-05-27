@@ -314,7 +314,7 @@ function ChatPanel({ messages, input, loading, onInputChange, onSend }: ChatPane
 
   return (
     <div className="flex h-full flex-col">
-      <p className="mb-2 text-sm font-medium">AI Assistant</p>
+      <p className="mb-2 text-sm font-medium">Your AI Assistant</p>
       <Separator />
 
       {/* Message list */}
@@ -414,6 +414,26 @@ export default function SearchPanel() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
+
+  const SAVED_MIN_HEIGHT = 256;
+  const [savedHeight, setSavedHeight] = useState<number | null>(null);
+  const [savedAtMax, setSavedAtMax] = useState(false);
+  const savedScrollRef = useRef<HTMLDivElement | null>(null);
+  const savedListRef = useRef<HTMLUListElement | null>(null);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dragCleanupRef.current) dragCleanupRef.current();
+    };
+  }, []);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dragCleanupRef.current) dragCleanupRef.current();
+    };
+  }, []);
 
   const { status } = useSession();
   const authed = status === "authenticated";
@@ -567,6 +587,65 @@ export default function SearchPanel() {
       setSavedLoading(false);
     }
   }
+
+  function handleSavedDividerMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    if (saved.length === 0) return;
+    const container = savedScrollRef.current;
+    const list = savedListRef.current;
+    if (!container || !list) return;
+
+    e.preventDefault();
+    let lastY = e.clientY;
+    let currentHeight = container.offsetHeight;
+    const maxHeight = list.offsetHeight;
+
+    const prevUserSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "row-resize";
+
+    function onMove(ev: MouseEvent) {
+      const delta = ev.clientY - lastY;
+      if (delta === 0) return;
+      const desired = currentHeight + delta;
+      const next = Math.max(SAVED_MIN_HEIGHT, Math.min(maxHeight, desired));
+      const actualDelta = next - currentHeight;
+      if (actualDelta === 0) return;
+      lastY += actualDelta;
+      currentHeight = next;
+      setSavedHeight(next);
+    }
+
+    function onUp() {
+      document.body.style.userSelect = prevUserSelect;
+      document.body.style.cursor = prevCursor;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      setSavedAtMax(currentHeight >= maxHeight);
+    }
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  useEffect(() => {
+    if (!savedAtMax) return;
+    const list = savedListRef.current;
+    if (!list) {
+      if (saved.length === 0) {
+        setSavedHeight(null);
+        setSavedAtMax(false);
+      }
+      return;
+    }
+    const contentHeight = list.offsetHeight;
+    if (contentHeight <= SAVED_MIN_HEIGHT) {
+      setSavedHeight(null);
+      setSavedAtMax(false);
+    } else {
+      setSavedHeight(contentHeight);
+    }
+  }, [saved, savedAtMax]);
 
   async function performSearch(q: string) {
     setQuery(q);
@@ -766,7 +845,7 @@ export default function SearchPanel() {
             </button>
 
             <div className={`overflow-hidden transition-all duration-300 ${chatOpen ? "w-80" : "w-0"}`}>
-              <div className="w-80 rounded-r-lg border border-l-0 p-4">
+              <div className="w-80 rounded-r-lg border border-l-2 p-4 shadow-md">
                 <ChatPanel
                   messages={messages}
                   input={chatInput}
@@ -850,8 +929,12 @@ export default function SearchPanel() {
           ) : saved.length === 0 ? (
             <p className="text-sm text-muted-foreground">No saved places yet.</p>
           ) : (
-            <div className="max-h-64 overflow-y-auto">
-              <ul className="grid grid-cols-2 gap-2">
+            <div
+              ref={savedScrollRef}
+              className={savedHeight === null ? "max-h-64 overflow-y-auto" : "overflow-y-auto"}
+              style={savedHeight !== null ? { height: `${savedHeight}px` } : undefined}
+            >
+              <ul ref={savedListRef} className="grid grid-cols-2 gap-2">
                 {saved.map((s) => (
                   <li
                     key={s.placeId}
@@ -914,7 +997,19 @@ export default function SearchPanel() {
             </div>
           )}
 
-          <Separator />
+          {saved.length > 0 ? (
+            <div
+              onMouseDown={handleSavedDividerMouseDown}
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Resize saved section"
+              className="group relative -my-1 flex h-3 cursor-row-resize items-center"
+            >
+              <div className="h-px w-full bg-border transition-all group-hover:h-0.5 group-hover:bg-primary/60" />
+            </div>
+          ) : (
+            <Separator />
+          )}
         </div>
 
         {/* Itinerary section */}
