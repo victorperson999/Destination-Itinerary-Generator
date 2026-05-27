@@ -420,6 +420,20 @@ export default function SearchPanel() {
   const [savedAtMax, setSavedAtMax] = useState(false);
   const savedScrollRef = useRef<HTMLDivElement | null>(null);
   const savedListRef = useRef<HTMLUListElement | null>(null);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dragCleanupRef.current) dragCleanupRef.current();
+    };
+  }, []);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (dragCleanupRef.current) dragCleanupRef.current();
+    };
+  }, []);
 
   const { status } = useSession();
   const authed = status === "authenticated";
