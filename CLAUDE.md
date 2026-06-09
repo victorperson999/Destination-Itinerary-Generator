@@ -70,12 +70,12 @@ All routes under `app/api/` use `export const runtime = "nodejs"` and require au
 ### Itinerary Generation Algorithm (`app/api/itineraries/[id]/generate/route.ts`)
 1. Loads user's saved places (optionally filtered to selected `placeIds`).
 2. Only places with lat/lon are eligible — request fails with 400 if none qualify.
-3. (Optional) shuffles the eligible list when `shuffle: true`.
+3. (Optional) shuffles the eligible list when `shuffle: true`. This alone does not change the output (the angle sweep re-sorts); it only randomizes angle-sort ties. Real shuffle variation comes from steps 4–6.
 4. Distributes eligible places across days (`assignDays`):
-   - If ≥2 places have coords: sort by polar angle around the centroid (geographic sweep), then chunk into **contiguous arcs** across days (Day 0 = first arc, Day 1 = next arc, …) so each day clusters geographically. Computed via `Math.floor((i * daysCount) / sorted.length)`.
+   - If ≥2 places have coords: sort by polar angle around the centroid (geographic sweep); when `shuffle: true`, rotate the sorted list by a random offset (sweep starts at a random angle, so arc boundaries move per run); then chunk into **contiguous arcs** across days (Day 0 = first arc, Day 1 = next arc, …) so each day clusters geographically. Computed via `Math.floor((i * daysCount) / sorted.length)`.
    - Otherwise: sort by category then name, round-robin across days.
-5. Trims each day's bucket to at most `perDay` places. The cap is applied **after** day assignment to preserve spatial clusters (a global pre-trim would just drop the tail in `createdAt` order).
-6. Orders places within each day using nearest-neighbour greedy on squared Euclidean distance (`dist2`); short days (≤2 places) skip the greedy pass.
+5. Trims each day's bucket to at most `perDay` places (`sampleInOrder`): without shuffle, keeps the first `perDay`; with shuffle, keeps a random subset preserving angle order. The cap is applied **after** day assignment to preserve spatial clusters (a global pre-trim would just drop the tail in `createdAt` order).
+6. Orders places within each day using nearest-neighbour greedy on squared Euclidean distance (`dist2`), starting from a random stop when `shuffle: true`; short days (≤2 places) skip the greedy pass.
 7. Body params: `mode` (`"replace"` | `"append"`), `perDay` (1–8, default 3), `shuffle` (bool), `placeIds` (optional string array). Response includes a `debug` block with `savedCount`, `eligibleCount`, `chosenCount` (post-trim total), `selectedCount`, `mode`, `perDay`, `shuffle`.
 
 ### Chat Assistant (`app/api/chat/route.ts`)
