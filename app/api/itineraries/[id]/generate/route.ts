@@ -98,12 +98,14 @@ function assignDays(places: P[], daysCount: number, shuffle: boolean): P[][] {
         return buckets;
     }
 
-    const sorted = [...places].sort((a, b) => {
-        const ca = a.category ?? "";
-        const cb = b.category ?? "";
-        if (ca !== cb) return ca.localeCompare(cb);
-        return a.name.localeCompare(b.name);
-    });
+        const sorted = shuffle 
+        ? [...places] 
+        : [...places].sort((a, b) => {
+            const ca = a.category ?? "";
+            const cb = b.category ?? "";
+            if (ca !== cb) return ca.localeCompare(cb);
+            return a.name.localeCompare(b.name);
+        });
 
     sorted.forEach((p, i) => buckets[i % daysCount].push(p));
     return buckets;
