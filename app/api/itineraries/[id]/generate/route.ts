@@ -36,10 +36,26 @@ function dist2(a: { lat: number; lon: number}, b: { lat: number; lon: number}){
     const dy = a.lon - b.lon;
     return (dx * dx) + (dy * dy);
 }
+
+// Keep at most k items; when shuffling, keep a random subset but preserve
+// the original (angle-sweep) order so the day still reads as one arc.
+function sampleInOrder<T>(arr: T[], k: number, shuffle: boolean): T[] {
+    if (arr.length <= k) return arr;
+    if (!shuffle) return arr.slice(0, k);
+
+    const picked = arr
+        .map((_, i) => ({ i, r: Math.random() }))
+        .sort((a, b) => a.r - b.r)
+        .slice(0, k)
+        .map((x) => x.i)
+        .sort((a, b) => a - b);
+
+    return picked.map((i) => arr[i]);
+}
 // 1) if we have the coordinates, sweep cluster angle around the center, then chunk into days
 // 2) if no coordiates, distribute by category name
 
-function assignDays(places: P[], daysCount: number): P[][] {
+function assignDays(places: P[], daysCount: number, shuffle: boolean): P[][] {
     const withCoords = places.filter(
         (p): p is P & { lat: number; lon: number } =>
             typeof p.lat === "number" && typeof p.lon === "number"
@@ -57,9 +73,16 @@ function assignDays(places: P[], daysCount: number): P[][] {
             return aa - bb;
         });
 
+        // The angle sort is deterministic, so without this rotation a shuffled
+        // input produces the exact same arcs every run. Starting the sweep at a
+        // random angle changes where arc boundaries fall while keeping each day
+        // a contiguous slice of the circle.
+        const offset = shuffle ? Math.floor(Math.random() * sorted.length) : 0;
+        const rotated = sorted.slice(offset).concat(sorted.slice(0, offset));
+
         // Contiguous angle slices: Day 0 = first arc, Day 1 = next arc, etc.
         // Round-robin (i % daysCount) would interleave clusters and defeat the sweep.
-        sorted.forEach((p, i) => {
+        rotated.forEach((p, i) => {
             const day = Math.min(
                 Math.floor((i * daysCount) / sorted.length),
                 daysCount - 1
@@ -75,18 +98,20 @@ function assignDays(places: P[], daysCount: number): P[][] {
         return buckets;
     }
 
-    const sorted = [...places].sort((a, b) => {
-        const ca = a.category ?? "";
-        const cb = b.category ?? "";
-        if (ca !== cb) return ca.localeCompare(cb);
-        return a.name.localeCompare(b.name);
-    });
+        const sorted = shuffle 
+        ? [...places] 
+        : [...places].sort((a, b) => {
+            const ca = a.category ?? "";
+            const cb = b.category ?? "";
+            if (ca !== cb) return ca.localeCompare(cb);
+            return a.name.localeCompare(b.name);
+        });
 
     sorted.forEach((p, i) => buckets[i % daysCount].push(p));
     return buckets;
 }
 
-function orderWithinDay(day: P[]): P[]{
+function orderWithinDay(day: P[], shuffle: boolean): P[]{
     const pts = day.filter(
         (p) => typeof p.lat === "number" && typeof p.lon === "number") as Array<P & { lat: number; lon: number }>;
     const rest = day.filter((p) => !(typeof p.lat === "number" && typeof p.lon === "number"));
@@ -98,8 +123,8 @@ function orderWithinDay(day: P[]): P[]{
     const remaining = new Set(pts.map((p)=>p.id));
     const byId = new Map(pts.map((p)=>[p.id, p]));
     const ordered: P[] = [];
-    //start at arbitrary point
-    let current = pts[0];
+    //start at arbitrary point (random when shuffling, so the walking path varies)
+    let current = pts[shuffle ? Math.floor(Math.random() * pts.length) : 0];
     ordered.push(current);
     remaining.delete(current.id);
 
@@ -177,6 +202,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         );
     }
 
+    // This pre-shuffle alone can't vary the output — assignDays re-sorts by
+    // angle. It only randomizes angle-sort ties (co-located places) and the
+    // no-coords round-robin; the real variation comes from the shuffle-aware
+    // rotation, trim, and path start below.
     if (shuffle) {
         eligible = eligible
             .map((p) => ({ p, r: Math.random() }))
@@ -188,8 +217,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     // 2) Trim each day to at most `perDay` places (preserves clustering;
     //    a global cap would just drop the tail of createdAt order)
     // 3) Order each day via nearest-neighbour for a sensible walking path
-    const buckets = assignDays(eligible, itinerary.daysCount);
-    const orderedByDay = buckets.map((b) => orderWithinDay(b.slice(0, perDay)));
+    const buckets = assignDays(eligible, itinerary.daysCount, shuffle);
+    const orderedByDay = buckets.map((b) =>
+        orderWithinDay(sampleInOrder(b, perDay, shuffle), shuffle)
+    );
     const totalChosen = orderedByDay.reduce((s, d) => s + d.length, 0);
 
     const created = await prisma.$transaction(async (tx) => {
