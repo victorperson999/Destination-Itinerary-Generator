@@ -14,7 +14,7 @@ import { ChevronLeft, ChevronRight, MapPin, Bookmark, CalendarDays } from "lucid
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type SavedItem = {
+export type SavedItem = {
   placeId: string;
   provider: string;
   providerId: string;
@@ -25,7 +25,7 @@ type SavedItem = {
   lon: number | null;
 };
 
-type Itinerary = {
+export type Itinerary = {
   id: string;
   title: string;
   daysCount: number;
@@ -34,7 +34,7 @@ type Itinerary = {
   updatedAt: string;
 };
 
-type ItineraryItem = {
+export type ItineraryItem = {
   id: string;
   itineraryId: string;
   placeId: string;
@@ -52,6 +52,15 @@ type ItineraryItem = {
   };
 };
 
+export type SearchPanelProps = {
+  initialUserId?: string | null;
+  initialSaved?: SavedItem[];
+  initialItineraries?: Itinerary[];
+  initialItineraryId?: string | null;
+  initialItineraryItems?: ItineraryItem[];
+  initialQuery?: string;
+};
+
 type PlaceResult = {
   provider: "mock" | "osm";
   providerId: string;
@@ -65,6 +74,7 @@ type PlaceResult = {
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  isError?: boolean;
 };
 
 type ChatSideEffect =
@@ -73,6 +83,18 @@ type ChatSideEffect =
   | { type: "generate"; itineraryId: string; perDay: number; shuffle: boolean; useSelected: boolean };
 
 // ── API helpers ───────────────────────────────────────────────────────────────
+
+async function fetchPlaces(q: string, signal: AbortSignal): Promise<PlaceResult[]> {
+  const res = await fetch(`/api/places?q=${encodeURIComponent(q)}`, {
+    cache: "no-store",
+    signal,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to fetch places: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+  return (await res.json()) as PlaceResult[];
+}
 
 async function fetchSaved(): Promise<SavedItem[]> {
   const res = await fetch("/api/saved", { cache: "no-store" });
@@ -163,7 +185,10 @@ async function fetchItineraryItems(id: string): Promise<ItineraryItem[]> {
   return (await res.json()) as ItineraryItem[];
 }
 
-async function generateItinerary(id: string, body?: unknown) {
+async function generateItinerary(
+  id: string,
+  body?: unknown
+): Promise<{ ok: boolean; count: number; items: ItineraryItem[] }> {
   const res = await fetch(`/api/itineraries/${encodeURIComponent(id)}/generate`, {
     method: "POST",
     cache: "no-store",
@@ -174,21 +199,7 @@ async function generateItinerary(id: string, body?: unknown) {
     const text = await res.text().catch(() => "");
     throw new Error(`Failed to generate itinerary: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
   }
-  return res.json();
-}
-
-async function removeItineraryItem(itinId: string, itemId: string) {
-  const res = await fetch(`/api/itineraries/${encodeURIComponent(itinId)}/items`, {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    cache: "no-store",
-    body: JSON.stringify({ itemId }),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Failed to remove item: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
-  }
-  return res.json();
+  return (await res.json()) as { ok: boolean; count: number; items: ItineraryItem[] };
 }
 
 // ── CategoryBadge ─────────────────────────────────────────────────────────────
@@ -229,11 +240,11 @@ type SearchResultsListProps = {
 };
 
 function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: SearchResultsListProps) {
-  const [visibleCount, setVisibleCount] = useState(15);
-
-  useEffect(() => {
-    setVisibleCount(10);
-  }, [results]);
+  const [pagination, setPagination] = useState<{ forResults: PlaceResult[]; count: number }>({
+    forResults: results,
+    count: 10,
+  });
+  const visibleCount = pagination.forResults === results ? pagination.count : 10;
 
   if (results.length === 0) {
     return (
@@ -255,28 +266,32 @@ function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: Sea
 
       <div className="max-h-96 overflow-y-auto rounded-lg border">
         <ul className="divide-y">
-          {visible.map((r) => (
-            <li key={r.providerId} className="p-3 transition-colors hover:bg-accent/30">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium">{r.name}</p>
-                  <p className="text-sm text-muted-foreground">{r.address}</p>
+          {visible.map((r) => {
+            const key = `${r.provider}:${r.providerId}`;
+            const isSaved = savedKeys.has(key);
+            return (
+              <li key={r.providerId} className="p-3 transition-colors hover:bg-accent/30">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{r.name}</p>
+                    <p className="text-sm text-muted-foreground">{r.address}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CategoryBadge category={r.category} />
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={isSaved ? "secondary" : "default"}
+                      disabled={isSaved || savingKey === key}
+                      onClick={() => void onSave(r)}
+                    >
+                      {isSaved ? "Saved" : "Save"}
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CategoryBadge category={r.category} />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={savedKeys.has(`${r.provider}:${r.providerId}`) ? "secondary" : "default"}
-                    disabled={savingKey === `${r.provider}:${r.providerId}`}
-                    onClick={() => void onSave(r)}
-                  >
-                    {savedKeys.has(`${r.provider}:${r.providerId}`) ? "Saved" : "Save"}
-                  </Button>
-                </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </div>
 
@@ -286,7 +301,12 @@ function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: Sea
           size="sm"
           variant="outline"
           className="w-full"
-          onClick={() => setVisibleCount((c) => c + 10)}
+          onClick={() =>
+            setPagination((p) => ({
+              forResults: results,
+              count: (p.forResults === results ? p.count : 10) + 10,
+            }))
+          }
         >
           Show more results ({results.length - visibleCount} remaining)
         </Button>
@@ -378,25 +398,33 @@ function ChatPanel({ messages, input, loading, onInputChange, onSend }: ChatPane
 
 // ── SearchPanel ───────────────────────────────────────────────────────────────
 
-export default function SearchPanel() {
-  const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(false);
+export default function SearchPanel({
+  initialUserId = null,
+  initialSaved = [],
+  initialItineraries = [],
+  initialItineraryId = null,
+  initialItineraryItems = [],
+  initialQuery = "",
+}: SearchPanelProps) {
+  const [query, setQuery] = useState(initialQuery);
+  const [searchedQuery, setSearchedQuery] = useState(initialQuery);
+  const [loading, setLoading] = useState(Boolean(initialQuery));
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<PlaceResult[]>([]);
 
-  const [saved, setSaved] = useState<SavedItem[]>([]);
+  const [saved, setSaved] = useState<SavedItem[]>(initialSaved);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
-  const [savedLoading, setSavedLoading] = useState(true);
+  const [savedLoading, setSavedLoading] = useState(false);
   const [savedError, setSavedError] = useState<string | null>(null);
 
   const [selectedSavedIds, setSelectedSavedIds] = useState<Set<string>>(new Set());
   const [genShuffle, setGenShuffle] = useState(false);
 
-  const [itineraries, setItineraries] = useState<Itinerary[]>([]);
-  const [itineraryId, setItineraryId] = useState<string | null>(null);
+  const [itineraries, setItineraries] = useState<Itinerary[]>(initialItineraries);
+  const [itineraryId, setItineraryId] = useState<string | null>(initialItineraryId);
 
-  const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
+  const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>(initialItineraryItems);
   const [itinLoading, setItinLoading] = useState(false);
   const [itinError, setItinError] = useState<string | null>(null);
 
@@ -421,23 +449,104 @@ export default function SearchPanel() {
   const savedScrollRef = useRef<HTMLDivElement | null>(null);
   const savedListRef = useRef<HTMLUListElement | null>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
+  const searchAbortRef = useRef<AbortController | null>(null);
+  const savedLoadedUserIdRef = useRef<string | null>(initialUserId);
+  const itinsLoadedUserIdRef = useRef<string | null>(initialUserId);
+  const loadedItemsKeyRef = useRef<string | null>(
+    initialUserId && initialItineraryId ? `${initialUserId}:${initialItineraryId}` : null
+  );
+  const activeItemsKeyRef = useRef<string | null>(
+    initialUserId && initialItineraryId ? `${initialUserId}:${initialItineraryId}` : null
+  );
+  const itemsFetchReqIdRef = useRef(0);
+
+  const { status, data: sessionData } = useSession();
+  const activeUserId =
+    status === "loading"
+      ? initialUserId
+      : status === "authenticated"
+      ? (sessionData?.user?.id ?? null)
+      : null;
+  const authed = Boolean(activeUserId);
+  const activeItemsKey =
+    activeUserId && itineraryId ? `${activeUserId}:${itineraryId}` : null;
+
+  useEffect(() => {
+    activeItemsKeyRef.current = activeItemsKey;
+  }, [activeItemsKey]);
 
   useEffect(() => {
     return () => {
       if (dragCleanupRef.current) dragCleanupRef.current();
+      searchAbortRef.current?.abort();
     };
   }, []);
 
-  const { status } = useSession();
-  const authed = status === "authenticated";
+  useEffect(() => {
+    if (!initialQuery) return;
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
+    fetchPlaces(initialQuery, controller.signal)
+      .then((data) => {
+        if (searchAbortRef.current !== controller) return;
+        setResults(data);
+        setError(null);
+      })
+      .catch((e: unknown) => {
+        if (controller.signal.aborted || searchAbortRef.current !== controller) return;
+        setError(e instanceof Error ? e.message : "Search failed");
+        setResults([]);
+      })
+      .finally(() => {
+        if (searchAbortRef.current === controller) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [initialQuery]);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (
+      activeUserId &&
+      !itinLoading &&
+      (itineraryId !== null || itinsLoadedUserIdRef.current === activeUserId)
+    ) {
+      if (itineraryId) url.searchParams.set("itinerary", itineraryId);
+      else url.searchParams.delete("itinerary");
+    }
+
+    if (searchedQuery) url.searchParams.set("q", searchedQuery);
+    else url.searchParams.delete("q");
+
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    const curr = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (next !== curr) {
+      window.history.replaceState(window.history.state, "", next);
+    }
+  }, [activeUserId, itinLoading, itineraryId, searchedQuery]);
 
   const canSearch = useMemo(() => query.trim().length > 0 && !loading, [query, loading]);
 
-  const selectedSavedCount = selectedSavedIds.size;
+  const activeSelectedSavedIds = useMemo(() => {
+    const allowed = new Set(saved.map((s) => s.placeId));
+    const next = new Set<string>();
+    for (const id of selectedSavedIds) {
+      if (allowed.has(id)) next.add(id);
+    }
+    return next;
+  }, [saved, selectedSavedIds]);
+
+  const selectedSavedCount = activeSelectedSavedIds.size;
 
   const selectedSavedIdArray = useMemo(
-    () => Array.from(selectedSavedIds),
-    [selectedSavedIds]
+    () => Array.from(activeSelectedSavedIds),
+    [activeSelectedSavedIds]
   );
 
   const savedKeys = useMemo(
@@ -471,19 +580,54 @@ export default function SearchPanel() {
   }, [itineraries, newItinTitle]);
 
   useEffect(() => {
-    setSelectedSavedIds((prev) => {
-      const allowed = new Set(saved.map((s) => s.placeId));
-      const next = new Set<string>();
-      for (const id of prev) if (allowed.has(id)) next.add(id);
-      return next;
-    });
-  }, [saved]);
+    let cancelled = false;
+
+    async function loadSaved() {
+      if (status === "loading") return;
+      if (!activeUserId) {
+        savedLoadedUserIdRef.current = null;
+        setSaved([]);
+        setSelectedSavedIds(new Set());
+        setSavedError(null);
+        setSavedLoading(false);
+        setSavedHeight(null);
+        setSavedAtMax(false);
+        return;
+      }
+
+      if (savedLoadedUserIdRef.current === activeUserId) return;
+
+      try {
+        setSavedLoading(true);
+        setSavedError(null);
+        setSelectedSavedIds(new Set());
+        const list = await fetchSaved();
+        if (!cancelled) {
+          savedLoadedUserIdRef.current = activeUserId;
+          setSaved(list);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setSavedError(e instanceof Error ? e.message : "Failed to load saved places");
+        }
+      } finally {
+        if (!cancelled) setSavedLoading(false);
+      }
+    }
+
+    void loadSaved();
+    return () => {
+      cancelled = true;
+    };
+  }, [status, activeUserId]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadItins() {
-      if (!authed) {
+      if (status === "loading") return;
+      if (!activeUserId) {
+        itinsLoadedUserIdRef.current = null;
         setItineraries([]);
         setItineraryId(null);
         setItineraryItems([]);
@@ -494,17 +638,22 @@ export default function SearchPanel() {
         return;
       }
 
+      if (itinsLoadedUserIdRef.current === activeUserId) return;
+
+      const urlItinId = new URLSearchParams(window.location.search).get("itinerary");
       try {
         setItinLoading(true);
         setItinError(null);
         const list = await fetchItineraries();
         if (cancelled) return;
 
+        itinsLoadedUserIdRef.current = activeUserId;
         setItineraries(list);
-
-        if (!itineraryId && list.length > 0) {
-          setItineraryId(list[0].id);
-        }
+        setItineraryId((prev) => {
+          if (prev && list.some((i) => i.id === prev)) return prev;
+          if (urlItinId && list.some((i) => i.id === urlItinId)) return urlItinId;
+          return list[0]?.id ?? null;
+        });
       } catch (e) {
         if (!cancelled) {
           setItinError(e instanceof Error ? e.message : "Failed to load itineraries");
@@ -518,31 +667,43 @@ export default function SearchPanel() {
     return () => {
       cancelled = true;
     };
-    // IMPORTANT: include itineraryId so we don't overwrite user selection incorrectly
-  }, [authed, itineraryId]);
+  }, [status, activeUserId]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadItems() {
-      if (!authed || !itineraryId) {
+      if (status === "loading") return;
+      if (!activeUserId || !itineraryId) {
+        loadedItemsKeyRef.current = null;
         setItineraryItems([]);
         setItemsError(null);
         setItemsLoading(false);
         return;
       }
 
+      const itemsKey = `${activeUserId}:${itineraryId}`;
+      if (loadedItemsKeyRef.current === itemsKey) {
+        setItemsLoading(false);
+        setItemsError(null);
+        return;
+      }
+
+      const reqId = ++itemsFetchReqIdRef.current;
       try {
         setItemsLoading(true);
         setItemsError(null);
         const items = await fetchItineraryItems(itineraryId);
-        if (!cancelled) setItineraryItems(items);
+        if (!cancelled && itemsFetchReqIdRef.current === reqId) {
+          loadedItemsKeyRef.current = itemsKey;
+          setItineraryItems(items);
+        }
       } catch (e) {
-        if (!cancelled) {
+        if (!cancelled && itemsFetchReqIdRef.current === reqId) {
           setItemsError(e instanceof Error ? e.message : "Failed to load itinerary items");
         }
       } finally {
-        if (!cancelled) setItemsLoading(false);
+        if (!cancelled && itemsFetchReqIdRef.current === reqId) setItemsLoading(false);
       }
     }
 
@@ -550,7 +711,7 @@ export default function SearchPanel() {
     return () => {
       cancelled = true;
     };
-  }, [authed, itineraryId]);
+  }, [status, activeUserId, itineraryId]);
 
   function toggleSavedSelection(placeId: string) {
     setSelectedSavedIds((prev) => {
@@ -573,7 +734,20 @@ export default function SearchPanel() {
     try {
       setSavedLoading(true);
       setSavedError(null);
-      setSaved(await fetchSaved());
+      const list = await fetchSaved();
+      setSaved(list);
+      if (list.length === 0) {
+        setSavedHeight(null);
+        setSavedAtMax(false);
+      } else {
+        requestAnimationFrame(() => {
+          const listHeight = savedListRef.current?.offsetHeight ?? 0;
+          if (listHeight > 0 && listHeight <= SAVED_MIN_HEIGHT) {
+            setSavedHeight(null);
+            setSavedAtMax(false);
+          }
+        });
+      }
     } catch (e) {
       setSavedError(e instanceof Error ? e.message : "Failed to load saved places");
     } finally {
@@ -587,10 +761,13 @@ export default function SearchPanel() {
     const list = savedListRef.current;
     if (!container || !list) return;
 
+    const maxHeight = list.offsetHeight;
+    if (maxHeight <= SAVED_MIN_HEIGHT) return;
+
     e.preventDefault();
     let lastY = e.clientY;
     let currentHeight = container.offsetHeight;
-    const maxHeight = list.offsetHeight;
+    let moved = false;
 
     const prevUserSelect = document.body.style.userSelect;
     const prevCursor = document.body.style.cursor;
@@ -604,65 +781,66 @@ export default function SearchPanel() {
       const next = Math.max(SAVED_MIN_HEIGHT, Math.min(maxHeight, desired));
       const actualDelta = next - currentHeight;
       if (actualDelta === 0) return;
+      moved = true;
       lastY += actualDelta;
       currentHeight = next;
+      setSavedAtMax(false);
       setSavedHeight(next);
     }
 
-    function onUp() {
+    function cleanup() {
       document.body.style.userSelect = prevUserSelect;
       document.body.style.cursor = prevCursor;
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
-      setSavedAtMax(currentHeight >= maxHeight);
+      dragCleanupRef.current = null;
     }
 
+    function onUp() {
+      cleanup();
+      if (!moved) return;
+      const atMax = currentHeight >= maxHeight;
+      setSavedAtMax(atMax);
+      if (atMax) setSavedHeight(null);
+    }
+
+    dragCleanupRef.current = cleanup;
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   }
 
-  useEffect(() => {
-    if (!savedAtMax) return;
-    const list = savedListRef.current;
-    if (!list) {
-      if (saved.length === 0) {
-        setSavedHeight(null);
-        setSavedAtMax(false);
-      }
-      return;
-    }
-    const contentHeight = list.offsetHeight;
-    if (contentHeight <= SAVED_MIN_HEIGHT) {
-      setSavedHeight(null);
-      setSavedAtMax(false);
-    } else {
-      setSavedHeight(contentHeight);
-    }
-  }, [saved, savedAtMax]);
-
   async function performSearch(q: string) {
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+
     setQuery(q);
+    setSearchedQuery(q);
     setError(null);
     setLoading(true);
     setResults([]);
     try {
-      const res = await fetch(`/api/places?q=${encodeURIComponent(q)}`, { cache: "no-store" });
-      if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`Failed to fetch places: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
-      }
-      setResults((await res.json()) as PlaceResult[]);
+      const data = await fetchPlaces(q, controller.signal);
+      if (searchAbortRef.current !== controller) return;
+      setResults(data);
     } catch (e) {
+      if (controller.signal.aborted || searchAbortRef.current !== controller) return;
       setError(e instanceof Error ? e.message : "Search failed");
       setResults([]);
     } finally {
-      setLoading(false);
+      if (searchAbortRef.current === controller) {
+        setLoading(false);
+      }
     }
   }
 
   async function onSearch() {
     const q = query.trim();
     if (!q) {
+      searchAbortRef.current?.abort();
+      searchAbortRef.current = null;
+      setLoading(false);
+      setSearchedQuery("");
       setError("Enter a city or name of neighbourhood (e.g. Toronto)");
       setResults([]);
       return;
@@ -675,6 +853,9 @@ export default function SearchPanel() {
     if (!text || chatLoading) return;
 
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
+    const apiMessages = newMessages
+      .filter((m) => !m.isError)
+      .map(({ role, content }) => ({ role, content }));
     setMessages(newMessages);
     setChatInput("");
     setChatLoading(true);
@@ -684,7 +865,7 @@ export default function SearchPanel() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: newMessages,
+          messages: apiMessages,
           context: {
             savedCount: saved.length,
             selectedSavedCount: selectedSavedCount,
@@ -704,17 +885,32 @@ export default function SearchPanel() {
       const data = (await res.json()) as { message: string; sideEffects: ChatSideEffect[] };
 
       let genError: string | null = null;
+      const effects = data.sideEffects ?? [];
+      const generatedIds = new Set(
+        effects
+          .filter((ef): ef is Extract<ChatSideEffect, { type: "generate" }> => ef.type === "generate")
+          .map((ef) => ef.itineraryId)
+      );
+      let deferredSelectId: string | null = null;
 
-      for (const effect of data.sideEffects ?? []) {
+      for (const effect of effects) {
         if (effect.type === "search") {
           void performSearch(effect.query);
         } else if (effect.type === "refresh_itineraries") {
           const list = await fetchItineraries();
           setItineraries(list);
-          if (effect.selectId) setItineraryId(effect.selectId);
+          if (effect.selectId) {
+            // Defer switching active itinerary if a generate effect for it follows in this batch
+            // so loadItems doesn't race against generateItinerary and wipe the generated items.
+            if (generatedIds.has(effect.selectId)) {
+              deferredSelectId = effect.selectId;
+            } else {
+              setItineraryId(effect.selectId);
+            }
+          }
         } else if (effect.type === "generate") {
           try {
-            await generateItinerary(effect.itineraryId, {
+            const generated = await generateItinerary(effect.itineraryId, {
               mode: "replace",
               perDay: effect.perDay,
               shuffle: effect.shuffle,
@@ -722,13 +918,27 @@ export default function SearchPanel() {
                 ? { placeIds: selectedSavedIdArray }
                 : {}),
             });
-            const items = await fetchItineraryItems(effect.itineraryId);
-            setItineraryItems(items);
+            itemsFetchReqIdRef.current++;
+            loadedItemsKeyRef.current = activeUserId ? `${activeUserId}:${effect.itineraryId}` : null;
+            setItemsLoading(false);
+            setItemsError(null);
+            setItineraryItems(generated.items);
             setItineraryId(effect.itineraryId);
+            if (deferredSelectId === effect.itineraryId) {
+              deferredSelectId = null;
+            }
           } catch (e) {
             genError = e instanceof Error ? e.message : "Generation failed";
+            if (deferredSelectId) {
+              setItineraryId(deferredSelectId);
+              deferredSelectId = null;
+            }
           }
         }
+      }
+
+      if (deferredSelectId) {
+        setItineraryId(deferredSelectId);
       }
 
       const assistantText = genError
@@ -736,17 +946,22 @@ export default function SearchPanel() {
         : data.message;
 
       if (assistantText) {
-        setMessages((prev) => [...prev, { role: "assistant", content: assistantText }]);
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: assistantText, ...(genError ? { isError: true } : {}) },
+        ]);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { status?: number; message?: string };
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: e?.status === 401
+          isError: true,
+          content: err?.status === 401
             ? "Please sign in to use AI planning features."
-            : e?.status === 429
-            ? e.message
+            : err?.status === 429
+            ? (err.message ?? "The AI is temporarily rate-limited. Please try again.")
             : "Sorry, I couldn't reach the AI right now. Please try again.",
         },
       ]);
@@ -821,7 +1036,7 @@ export default function SearchPanel() {
               results={results}
               savedKeys={savedKeys}
               savingKey={savingKey}
-              query={query}
+              query={searchedQuery}
               onSave={handleSavePlace}
             />
           </div>
@@ -924,15 +1139,21 @@ export default function SearchPanel() {
           ) : (
             <div
               ref={savedScrollRef}
-              className={savedHeight === null ? "max-h-64 overflow-y-auto" : "overflow-y-auto"}
-              style={savedHeight !== null ? { height: `${savedHeight}px` } : undefined}
+              className={
+                savedAtMax
+                  ? "overflow-y-auto"
+                  : savedHeight === null
+                  ? "max-h-64 overflow-y-auto"
+                  : "overflow-y-auto"
+              }
+              style={!savedAtMax && savedHeight !== null ? { maxHeight: `${savedHeight}px` } : undefined}
             >
               <ul ref={savedListRef} className="grid grid-cols-2 gap-2">
                 {saved.map((s) => (
                   <li
                     key={s.placeId}
                     className={`rounded-lg border p-2 transition-colors hover:border-primary/40 hover:bg-accent/30 ${
-                      selectedSavedIds.has(s.placeId) ? "border-primary/60 bg-primary/5" : ""
+                      activeSelectedSavedIds.has(s.placeId) ? "border-primary/60 bg-primary/5" : ""
                     }`}
                   >
                     <div className="flex flex-col gap-1.5">
@@ -940,7 +1161,7 @@ export default function SearchPanel() {
                         <input
                           type="checkbox"
                           className="mt-0.5 h-4 w-4 flex-shrink-0"
-                          checked={selectedSavedIds.has(s.placeId)}
+                          checked={activeSelectedSavedIds.has(s.placeId)}
                           onChange={() => toggleSavedSelection(s.placeId)}
                           disabled={!authed}
                           aria-label={`Select ${s.name}`}
@@ -1027,7 +1248,7 @@ export default function SearchPanel() {
                   value={newItinTitle}
                   onChange={(e) => {
                     setNewItinTitle(e.target.value);
-                    if (newItinTitle) {
+                    if (newItinTitleError) {
                       setNewItinTitleError(null);
                     }
                   }}
@@ -1075,10 +1296,11 @@ export default function SearchPanel() {
                       const list = await fetchItineraries();
                       setItineraries(list);
                       setItineraryId(created.id);
-                    } catch (e: any) {
-                      if (e?.code === "DUPLICATE_ITINERARY" || e?.status === 409) {
+                    } catch (e: unknown) {
+                      const err = e as { code?: string; status?: number; message?: string };
+                      if (err?.code === "DUPLICATE_ITINERARY" || err?.status === 409) {
                         setNewItinTitleError(
-                          e?.message || "Itinerary with this name already exists, enter a different name"
+                          err?.message || "Itinerary with this name already exists, enter a different name"
                         );
                         setTimeout(() => setNewItinTitleError(null), 2500);
                         return;
@@ -1128,22 +1350,33 @@ export default function SearchPanel() {
                         void signIn("github");
                         return;
                       }
-                      if (!itineraryId) return;
+                      if (!itineraryId || !activeUserId) return;
+                      const targetId = itineraryId;
+                      const targetKey = `${activeUserId}:${targetId}`;
 
                       try {
                         setGenerating(true);
                         setItemsError(null);
 
-                        await generateItinerary(itineraryId, {
+                        const generated = await generateItinerary(targetId, {
                           mode: "replace",
                           perDay: 3,
                           shuffle: genShuffle,
                         });
 
-                        const items = await fetchItineraryItems(itineraryId);
-                        setItineraryItems(items);
+                        if (activeItemsKeyRef.current === targetKey) {
+                          itemsFetchReqIdRef.current++;
+                          loadedItemsKeyRef.current = targetKey;
+                          setItemsLoading(false);
+                          setItemsError(null);
+                          setItineraryItems(generated.items);
+                        } else if (loadedItemsKeyRef.current === targetKey) {
+                          loadedItemsKeyRef.current = null;
+                        }
                       } catch (e) {
-                        setItemsError(e instanceof Error ? e.message : "Failed to generate itinerary");
+                        if (activeItemsKeyRef.current === targetKey) {
+                          setItemsError(e instanceof Error ? e.message : "Failed to generate itinerary");
+                        }
                       } finally {
                         setGenerating(false);
                       }
@@ -1160,23 +1393,34 @@ export default function SearchPanel() {
                         void signIn("github");
                         return;
                       }
-                      if (!itineraryId) return;
+                      if (!itineraryId || !activeUserId) return;
+                      const targetId = itineraryId;
+                      const targetKey = `${activeUserId}:${targetId}`;
 
                       try {
                         setGenerating(true);
                         setItemsError(null);
 
-                        await generateItinerary(itineraryId, {
+                        const generated = await generateItinerary(targetId, {
                           mode: "replace",
                           perDay: 3,
                           shuffle: genShuffle,
                           placeIds: selectedSavedIdArray,
                         });
 
-                        const items = await fetchItineraryItems(itineraryId);
-                        setItineraryItems(items);
+                        if (activeItemsKeyRef.current === targetKey) {
+                          itemsFetchReqIdRef.current++;
+                          loadedItemsKeyRef.current = targetKey;
+                          setItemsLoading(false);
+                          setItemsError(null);
+                          setItineraryItems(generated.items);
+                        } else if (loadedItemsKeyRef.current === targetKey) {
+                          loadedItemsKeyRef.current = null;
+                        }
                       } catch (e) {
-                        setItemsError(e instanceof Error ? e.message : "Failed to generate itinerary");
+                        if (activeItemsKeyRef.current === targetKey) {
+                          setItemsError(e instanceof Error ? e.message : "Failed to generate itinerary");
+                        }
                       } finally {
                         setGenerating(false);
                       }
@@ -1196,7 +1440,8 @@ export default function SearchPanel() {
                 <p className="text-sm text-muted-foreground">Select an itinerary to see items.</p>
               ) : itineraryItems.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No items yet. Click <span className="font-medium">Generate (replace)</span>.
+                  No items yet. Click <span className="font-medium">Generate (all saved)</span> or{" "}
+                  <span className="font-medium">Generate (selected)</span>.
                 </p>
               ) : (
                 <div className="max-h-[28rem] overflow-y-auto space-y-3 pr-1">

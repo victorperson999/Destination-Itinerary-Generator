@@ -71,7 +71,7 @@ export async function POST(req: Request) {
   }
 
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
+  const userId = session?.user?.id;
 
   const body = await req.json().catch(() => null);
   if (!body || !Array.isArray(body.messages) || body.messages.length === 0) {
@@ -80,6 +80,11 @@ export async function POST(req: Request) {
 
   // Cap history to last 20 messages to avoid hitting context limits
   const messages: InMessage[] = body.messages.slice(-20);
+  const lastMsg = messages[messages.length - 1];
+  if (!lastMsg || lastMsg.role !== "user" || !lastMsg.content?.trim()) {
+    return NextResponse.json({ error: "Last message must be a non-empty user message" }, { status: 400 });
+  }
+
   const ctx: {
     savedCount?: number;
     selectedSavedCount?: number;
@@ -88,12 +93,34 @@ export async function POST(req: Request) {
     activeItineraryTitle?: string;
   } = body.context ?? {};
 
-  // Build Gemini chat history (all messages except the last)
-  const history = messages.slice(0, -1).map((m) => ({
-    role: m.role === "user" ? ("user" as const) : ("model" as const),
-    parts: [{ text: m.content }],
-  }));
-  const lastMsg = messages[messages.length - 1];
+  // Build Gemini chat history (all messages except the last).
+  // Gemini requires history to start with "user", alternate user/model turns,
+  // and end with "model" since sendMessage() appends the next "user" turn.
+  const history: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+  for (const m of messages.slice(0, -1)) {
+    const text = typeof m?.content === "string" ? m.content.trim() : "";
+    if (!text) continue;
+    const role: "user" | "model" = m.role === "user" ? "user" : "model";
+    if (history.length === 0) {
+      if (role !== "user") continue;
+      history.push({ role, parts: [{ text }] });
+      continue;
+    }
+    const prev = history[history.length - 1];
+    if (prev.role === role) {
+      if (role === "user") {
+        // Previous user message had no model reply (e.g. stripped error turn); replace with latest
+        prev.parts = [{ text }];
+      } else {
+        prev.parts.push({ text });
+      }
+    } else {
+      history.push({ role, parts: [{ text }] });
+    }
+  }
+  if (history.length > 0 && history[history.length - 1].role === "user") {
+    history.pop();
+  }
 
   const hasSelections = (ctx.selectedSavedCount ?? 0) > 0;
 
@@ -167,10 +194,10 @@ export async function POST(req: Request) {
     tools: [{ functionDeclarations: functionDeclarations as any }],
   });
 
-  const chat = model.startChat({ history });
   const sideEffects: ChatSideEffect[] = [];
 
   try {
+    const chat = model.startChat({ history });
     let result = await chat.sendMessage(lastMsg.content);
 
     // Function calling loop — max 5 iterations to prevent runaway tool chains
@@ -194,8 +221,8 @@ export async function POST(req: Request) {
     const message = text || buildFallbackMessage(sideEffects);
     return NextResponse.json({ message, sideEffects });
 
-  } catch (e: any) {
-    if (e?.status === 429) {
+  } catch (e: unknown) {
+    if ((e as { status?: number })?.status === 429) {
       return NextResponse.json(
         { error: "The AI is temporarily rate-limited. Please wait a few seconds and try again." },
         { status: 429 }
@@ -240,17 +267,18 @@ async function executeFunction(name: string, args: Record<string, unknown>,userI
 
     try {
       const itin = await prisma.itinerary.create({ data: { title, daysCount, userId } });
-      const r = await getRedis();
-      if (r) {
-        r.del(`itineraries:v1:user:${userId}`).catch(() => {});
-      }
+      try {
+        const r = await getRedis();
+        if (r) await r.del(`itineraries:v1:user:${userId}`);
+      } catch {}
       sideEffects.push({ type: "refresh_itineraries", selectId: itin.id });
       return { result: `Created itinerary "${itin.title}" (${daysCount} days)`, id: itin.id };
-    } catch (e: any) {
-      if (e?.code === "P2002") {
+    } catch (e: unknown) {
+      const err = e as { code?: string; message?: string };
+      if (err?.code === "P2002") {
         return { error: `An itinerary named "${title}" already exists` };
       }
-      return { error: e?.message ?? "Failed to create itinerary" };
+      return { error: err?.message ?? "Failed to create itinerary" };
     }
   }
 
@@ -267,6 +295,16 @@ async function executeFunction(name: string, args: Record<string, unknown>,userI
     const savedCount = await prisma.savedPlace.count({ where: { savedById: userId } });
     if (savedCount === 0) {
       return { error: "You have no saved places to generate from. Search for a destination and save some places first." };
+    }
+
+    const eligibleCount = await prisma.savedPlace.count({
+      where: {
+        savedById: userId,
+        place: { lat: { not: null }, lon: { not: null } },
+      },
+    });
+    if (eligibleCount === 0) {
+      return { error: "None of your saved places have location coordinates and cannot be scheduled." };
     }
 
     const perDay = Math.min(Math.max(Math.round(Number(args.perDay) || 3), 1), 8);

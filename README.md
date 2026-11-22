@@ -1,16 +1,16 @@
 # Local Explorer — Itinerary Planner
 
-A web app for discovering local points of interest and building day-by-day travel itineraries. Search any city for restaurants, parks, museums, and more — save places, and create trips. Option for an AI assistant to arrange your schedule automatically.
+A web app for discovering local points of interest and building day-by-day travel itineraries. Search any city for museums, historic sites, parks, restaurants, and more — save places, organize trips, and optionally let a Gemini-powered assistant plan and generate schedules for you.
 
 ---
 
 ## What It Does
 
-1. **Search** — type a city or neighbourhood name to pull live points of interest from OpenStreetMap. No API key required for search.
-2. **Save** — bookmark places to your personal saved list while browsing results.
-3. **Plan** — create named itineraries (e.g. "Tokyo Trip, 5 days") and assign saved places to specific days.
-4. **Auto-generate** — hit Generate and the app sorts your saved places geographically and builds an optimised day-by-day route using a nearest-neighbour algorithm.
-5. **AI assistant** — a built-in chat panel (powered by Google Gemini) can search destinations, create itineraries, and trigger generation on your behalf via natural language.
+1. **Search** — enter a city or neighbourhood name to pull nearby points of interest via Nominatim (geocoding) and OpenTripMap.
+2. **Save** — bookmark places to your personal saved list, select specific subsets, and resize the saved panel.
+3. **Plan** — create named itineraries (e.g. "Tokyo Trip, 5 days") and manage stops across days.
+4. **Auto-generate** — cluster saved (or selected) places geographically into contiguous day arcs and build a per-day route using cosine-latitude-adjusted nearest-neighbour ordering, with optional shuffling.
+5. **AI assistant** — a collapsible chat panel powered by Google Gemini 2.5 Flash Lite can search destinations, create itineraries, and trigger schedule generation via structured function calling.
 
 ---
 
@@ -18,13 +18,13 @@ A web app for discovering local points of interest and building day-by-day trave
 
 | Layer | Technology |
 |-------|------------|
-| Framework | [Next.js](https://nextjs.org/) (App Router) + React 19 |
+| Framework | [Next.js 16](https://nextjs.org/) (App Router) + React 19 |
 | Language | TypeScript |
-| Styling | Tailwind CSS v4 + [shadcn/ui](https://ui.shadcn.com/) |
+| Styling | Tailwind CSS v4 + [shadcn/ui](https://ui.shadcn.com/) (light/dark mode) |
 | Database | PostgreSQL via [Prisma](https://www.prisma.io/) |
-| Cache | Redis (optional) |
-| Auth | [NextAuth.js](https://next-auth.js.org/) — GitHub OAuth |
-| Place data | OpenStreetMap — Nominatim (geocoding) + Overpass API (POIs) |
+| Cache | PostgreSQL (`PlacesQueryCache`, 6h TTL) + Redis (optional, short TTL) |
+| Auth | [NextAuth.js v4](https://next-auth.js.org/) — GitHub OAuth (database sessions) |
+| Place data | OpenStreetMap Nominatim (geocoding) + [OpenTripMap](https://opentripmap.io/) (POIs) |
 | AI chat | Google Gemini 2.5 Flash Lite (`@google/generative-ai`) |
 | Package manager | [pnpm](https://pnpm.io/) |
 
@@ -32,11 +32,12 @@ A web app for discovering local points of interest and building day-by-day trave
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 20.9+
 - pnpm (`npm install -g pnpm`)
-- Docker (for PostgreSQL)
+- Docker (for PostgreSQL, and optionally Redis)
 - A [GitHub OAuth App](https://github.com/settings/developers) for authentication
-- A [Google Gemini API key](https://aistudio.google.com/app/apikey) for the chat assistant
+- An [OpenTripMap API key](https://opentripmap.io/product) for POI search
+- A [Google Gemini API key](https://aistudio.google.com/app/apikey) for the AI chat assistant
 
 ---
 
@@ -66,17 +67,23 @@ GITHUB_SECRET=your_github_client_secret
 NEXTAUTH_URL=http://localhost:3000
 NEXTAUTH_SECRET=any_random_string_here
 
+# OpenTripMap (for POI search)
+OPENTRIPMAP_API_KEY=your_opentripmap_api_key
+
 # Google Gemini (for the AI chat assistant)
 GOOGLE_GENERATIVE_AI_KEY=your_gemini_api_key
 
-# Redis — optional; caching is silently skipped if unset
+# Redis — optional; caching is silently skipped if unset or unreachable
 # REDIS_URL=redis://localhost:6379
 ```
 
-### 3. Start the database
+### 3. Start the database (and optional Redis)
 
 ```bash
 docker compose up -d
+
+# Optional: local Redis for per-user API caching
+docker run -d -p 6379:6379 redis:7
 ```
 
 ### 4. Run database migrations
@@ -95,35 +102,64 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
+## API Routes
+
+All routes under `app/api/` run on the Node.js runtime (`export const runtime = "nodejs"`). Protected endpoints require a GitHub NextAuth session; `/api/places` is public, and `/api/chat` exposes only `search_city` when signed out.
+
+| Route | Methods | Description |
+|-------|---------|-------------|
+| `/api/auth/[...nextauth]` | `GET`, `POST` | NextAuth GitHub OAuth handler |
+| `/api/places` | `GET` | Geocode `q` via Nominatim and query OpenTripMap POIs (`limit` 1–50, 5000m radius) |
+| `/api/saved` | `GET`, `POST`, `DELETE` | List, save, or remove saved places (`{ placeId }` or `{ all: true }`) |
+| `/api/itineraries` | `GET`, `POST` | List or create user itineraries (unique title per user) |
+| `/api/itineraries/[id]` | `GET`, `PATCH`, `DELETE` | Fetch, update (`title`, `daysCount`, `startDate`), or delete a specific itinerary |
+| `/api/itineraries/[id]/items` | `GET`, `POST`, `PATCH`, `DELETE` | List, add, move/reorder/annotate, or remove items for a specific itinerary |
+| `/api/itineraries/[id]/generate` | `POST` | Auto-generate a day-by-day schedule (`mode`: `replace` \| `append`, `perDay` 1–8, `shuffle`, optional `placeIds`) |
+| `/api/chat` | `POST` | Gemini chat assistant with tool calling; returns `{ message, sideEffects[] }` |
+
+---
+
 ## Project Structure
 
-```
+```text
 app/
   api/
-    chat/            ← AI assistant endpoint (Gemini function calling)
-    places/           ← OSM place search (public, no auth required)
-    saved/            ← User's saved places (CRUD)
-    itineraries/      ← Itinerary management + auto-generate schedule
-  page.tsx            ← Entry point — renders <SearchPanel>
+    auth/[...nextauth]/         ← NextAuth GitHub OAuth route
+    chat/                       ← AI assistant endpoint (Gemini function calling)
+    places/                     ← Nominatim + OpenTripMap POI search (public)
+    saved/                      ← User's saved places (CRUD)
+    itineraries/
+      route.ts                  ← List / create itineraries
+      [id]/route.ts             ← Fetch, update, or delete an itinerary
+      [id]/items/               ← Itinerary item management (add, move/reorder/note, remove)
+      [id]/generate/            ← Geographic clustering & day-by-day schedule generator
+  layout.tsx                    ← Root layout + no-flash theme script
+  page.tsx                      ← Entry point — renders <SearchPanel>
+  providers.tsx                 ← NextAuth <SessionProvider>
 components/
+  auth-button.tsx               ← GitHub sign in/out control
+  theme-toggle.tsx              ← Light/dark theme toggle (useSyncExternalStore)
+  ui/                           ← shadcn/ui primitives (Badge, Button, Card, Input, Separator)
   ui/explorer/
-    search-panel.tsx  ← Entire app UI lives here (single client component)
+    search-panel.tsx            ← Main single-page workspace UI & client state
 lib/
-  auth.ts             ← NextAuth config
-  db.ts               ← Prisma client singleton
-  redis.ts            ← Optional Redis client (returns null if unconfigured)
+  auth.ts                       ← NextAuth config (GitHub provider + Prisma adapter)
+  db.ts                         ← Prisma client singleton
+  redis.ts                      ← Optional Redis client (2s connect timeout, graceful fallback)
+types/
+  next-auth.d.ts                ← NextAuth Session user.id type augmentation
 prisma/
-  schema.prisma       ← Database schema
+  schema.prisma                 ← PostgreSQL schema
 ```
 
 ---
 
 ## Key Design Notes
 
-- **No external place API key needed.** All POI data comes from OpenStreetMap's free Overpass API, with automatic mirror fallback and radius reduction on timeout.
-- **Two-level caching.** Overpass query results are cached in Postgres for 6 hours. Per-user API responses are optionally cached in Redis with short TTLs (60s–5min).
-- **AI chat uses function calling.** The Gemini model can invoke `search_city`, `create_itinerary`, and `generate_itinerary` as structured tool calls, which trigger real side-effects in the UI (live search results, new itinerary created, schedule generated).
-- **Auth is GitHub only.** Sessions are stored in the database via the Prisma adapter.
+- **Two-level caching.** OpenTripMap POI queries are cached in PostgreSQL (`PlacesQueryCache`) for 6 hours. Per-user reads (`/api/saved`, `/api/itineraries`, `/api/itineraries/[id]/items`) are optionally cached in Redis (60s–5min TTL) and invalidated on writes; if Redis is unset or unreachable, requests fall back cleanly to Postgres.
+- **Geographic itinerary generation.** Places with coordinates are sorted by polar angle around their centroid (with `cos(lat)` scaling) and sliced into contiguous geographic arcs per day, trimmed to `perDay`, then ordered within each day via nearest-neighbour search. Enabling `shuffle` rotates the sweep start angle, samples oversized day buckets randomly while preserving arc order, and randomizes each day's starting stop.
+- **AI chat side-effect contract.** `/api/chat` does not mutate client state directly — Gemini invokes `search_city`, `create_itinerary`, and `generate_itinerary`, and the endpoint returns a `sideEffects[]` array that the client executes against the UI and APIs.
+- **Single-page workspace.** Search, saved places, itinerary planning, and the AI assistant share state inside `SearchPanel` so actions in one panel (or from the chat assistant) update the rest of the workspace immediately.
 
 ---
 

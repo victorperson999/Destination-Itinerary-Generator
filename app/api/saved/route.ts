@@ -6,13 +6,12 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
 import { getRedis } from "@/lib/redis";
-import { AwardIcon } from "lucide-react";
 
 async function requireUserId() {
   const session = await getServerSession(authOptions);
-  const userId = (session?.user as any)?.id as string | undefined;
+  const userId = session?.user?.id;
   if (!userId) return null;
-  return userId
+  return userId;
 }
 
 function savedCacheKey(userId: string){
@@ -87,8 +86,21 @@ export async function POST(req: Request) {
 
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json();
-  const { provider, providerId, name, address, category, lat, lon } = body ?? {};
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) ?? {};
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const { provider, providerId, name, address, category, lat, lon } = body as {
+    provider?: string;
+    providerId?: string;
+    name?: string;
+    address?: string | null;
+    category?: string | null;
+    lat?: number | string | null;
+    lon?: number | string | null;
+  };
 
   if (!provider || !providerId || !name) {
     return NextResponse.json(
@@ -169,8 +181,8 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "placeId required" }, { status: 400 });
   }
 
-  await prisma.savedPlace.delete({
-    where: { savedById_placeId: { savedById: userId, placeId } },
+  await prisma.savedPlace.deleteMany({
+    where: { savedById: userId, placeId },
   });
 
   try {
