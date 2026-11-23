@@ -14,8 +14,7 @@ const ITINERARIES_TTL_SECONDS = 60;
 
 async function requireUserId() {
   const session = await getServerSession(authOptions);
-  const id = (session?.user as any)?.id as string | undefined;
-  return id ?? null;
+  return session?.user?.id ?? null;
 }
 
 export async function GET() {
@@ -58,24 +57,40 @@ export async function POST(req: Request) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const title = String(body?.title ?? "My Trip");
-  const daysCount = Math.max(1, Math.min(Number(body?.daysCount ?? 3), 30));
-  const startDate = body?.startDate ? new Date(body.startDate) : null;
+  const rawTitle = body?.title === undefined ? "My Trip" : String(body.title).trim();
+  if (!rawTitle) {
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
+  }
+  const title = rawTitle;
+
+  const rawDays = Number(body?.daysCount ?? 3);
+  const daysCount = Number.isFinite(rawDays)
+    ? Math.max(1, Math.min(Math.trunc(rawDays), 30))
+    : 3;
+
+  let startDate: Date | null = null;
+  if (body?.startDate !== undefined && body?.startDate !== null && body?.startDate !== "") {
+    const parsed = new Date(body.startDate);
+    if (Number.isNaN(parsed.getTime())) {
+      return NextResponse.json({ error: "Invalid startDate" }, { status: 400 });
+    }
+    startDate = parsed;
+  }
 
   try {
     const created = await prisma.itinerary.create({
       data: { userId, title, daysCount, startDate },
     });
 
-    const r = await getRedis();
-    if (r){
-      r.del(itinerariesCacheKey(userId)).catch(() => {});
-    }
+    try {
+      const r = await getRedis();
+      if (r) await r.del(itinerariesCacheKey(userId));
+    } catch {}
     
     return NextResponse.json(created);
 
-  } catch (e: any){
-      if (e?.code === "P2002") {
+  } catch (e: unknown){
+      if ((e as { code?: string })?.code === "P2002") {
       return NextResponse.json(
         { error: "Itinerary with this name already exists" },
         { status: 409 }

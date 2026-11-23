@@ -71,7 +71,10 @@ function cacheKeyForPlaces(q: string, limit: number, radius: number) {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") ?? "").trim();
-  const limit = Math.min(Number(searchParams.get("limit") ?? 50), 50);
+  const rawLimit = Number(searchParams.get("limit") ?? 50);
+  const limit = Number.isFinite(rawLimit)
+    ? Math.max(1, Math.min(Math.trunc(rawLimit), 50))
+    : 50;
 
   if (!q) return NextResponse.json([]);
 
@@ -99,20 +102,36 @@ export async function GET(req: Request) {
 
   // 1. Geocode with Nominatim
   const geoUrl = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`;
-  const geoRes = await fetch(geoUrl, {
-    headers: { "User-Agent": "local-explorer-itinerary-planner (dev)" },
-    cache: "no-store",
-  });
-
-  if (!geoRes.ok) {
-    return NextResponse.json({ error: "Geocoding failed" }, { status: 502 });
+  let geo: NominatimResult[];
+  try {
+    const geoRes = await fetch(geoUrl, {
+      headers: { "User-Agent": "local-explorer-itinerary-planner (dev)" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!geoRes.ok) {
+      return NextResponse.json({ error: "Geocoding failed" }, { status: 502 });
+    }
+    const parsed = (await geoRes.json()) as unknown;
+    if (!Array.isArray(parsed)) {
+      return NextResponse.json({ error: "Geocoding returned invalid data" }, { status: 502 });
+    }
+    geo = parsed as NominatimResult[];
+  } catch (e) {
+    const isTimeout = e instanceof Error && e.name === "TimeoutError";
+    return NextResponse.json(
+      { error: isTimeout ? "Geocoding request timed out" : "Geocoding request failed" },
+      { status: isTimeout ? 504 : 502 }
+    );
   }
 
-  const geo = (await geoRes.json()) as NominatimResult[];
   if (!geo.length) return NextResponse.json([]);
 
   const lat = Number(geo[0].lat);
   const lon = Number(geo[0].lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return NextResponse.json({ error: "Geocoding returned invalid coordinates" }, { status: 502 });
+  }
 
   // 2. Fetch POIs from OpenTripMap
   // Note: kinds must use literal commas — URLSearchParams encodes them as %2C which OTM rejects
@@ -128,17 +147,31 @@ export async function GET(req: Request) {
     `&format=json` +
     `&lang=en`;
 
-  const otmRes = await fetch(otmUrl, { cache: "no-store" });
-
-  if (!otmRes.ok) {
-    const text = await otmRes.text().catch(() => "");
+  let otmData: OtmPlace[];
+  try {
+    const otmRes = await fetch(otmUrl, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!otmRes.ok) {
+      const text = await otmRes.text().catch(() => "");
+      return NextResponse.json(
+        { error: "Places query failed", details: text.slice(0, 200) },
+        { status: 502 }
+      );
+    }
+    const parsed = (await otmRes.json()) as unknown;
+    if (!Array.isArray(parsed)) {
+      return NextResponse.json({ error: "Places query returned invalid data" }, { status: 502 });
+    }
+    otmData = parsed as OtmPlace[];
+  } catch (e) {
+    const isTimeout = e instanceof Error && e.name === "TimeoutError";
     return NextResponse.json(
-      { error: "Places query failed", details: text.slice(0, 200) },
-      { status: 502 }
+      { error: isTimeout ? "Places query timed out" : "Places query failed" },
+      { status: isTimeout ? 504 : 502 }
     );
   }
-
-  const otmData = (await otmRes.json()) as OtmPlace[];
 
   const results: Place[] = otmData
     .filter((p) => p.name && p.name.trim().length > 0)

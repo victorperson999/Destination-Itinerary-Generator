@@ -4,93 +4,34 @@
   "graph": {
     "hyperedges": [
       {
-        "id": "hyper_chat_tools",
-        "label": "Chat route exposes Gemini function-calling tools",
+        "id": "shuffle_randomness_flow",
+        "label": "Shuffle-aware randomness pipeline (rotation + in-order trim + random NN start)",
         "nodes": [
-          "api_chat_route",
-          "tool_search_city",
-          "tool_create_itinerary",
-          "tool_generate_itinerary",
-          "ext_gemini_model"
+          "generate_POST",
+          "generate_assignDays",
+          "generate_sampleInOrder",
+          "generate_orderWithinDay",
+          "generate_eligible_preshuffle"
         ],
-        "relation": "conceptually_related_to",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "app/api/chat/route.ts"
-      },
-      {
-        "id": "hyper_auth_flow",
-        "label": "Auth flow: route -> authOptions -> Prisma adapter",
-        "nodes": [
-          "api_auth_nextauth_route",
-          "lib_auth_authoptions",
-          "ext_auth_prisma_adapter",
-          "lib_db_prisma"
-        ],
-        "relation": "conceptually_related_to",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "lib/auth.ts"
-      },
-      {
-        "id": "hyper_itinerary_pipeline",
-        "label": "Itinerary generation reads SavedPlace + Place, writes ItineraryItem",
-        "nodes": [
-          "api_itineraries_generate_route",
-          "prisma_model_savedPlace",
-          "prisma_model_place",
-          "prisma_model_itinerary",
-          "prisma_model_itineraryItem"
-        ],
-        "relation": "shares_data_with",
+        "relation": "participate_in",
         "confidence": "EXTRACTED",
         "confidence_score": 1.0,
         "source_file": "app/api/itineraries/[id]/generate/route.ts"
       },
       {
-        "id": "hyper_search_panel_saved_section_resize",
-        "label": "Saved section resize feature (state + drag handler + rationale)",
+        "id": "chat_side_effect_flow",
+        "label": "Chat side-effect generate flow (LLM effect -> client apply -> generate route)",
         "nodes": [
-          "search_panel_saved_height_state",
-          "search_panel_drag_handler",
-          "claudemd_drag_reanchor"
+          "search_panel_handleChatSend",
+          "search_panel_ChatSideEffect",
+          "search_panel_generateItinerary",
+          "generate_POST",
+          "claude_md_chat_side_effect_contract"
         ],
-        "relation": "conceptually_related_to",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "components/ui/explorer/search-panel.tsx",
-        "weight": 1.0
-      },
-      {
-        "id": "hyper_auth_db_models",
-        "label": "NextAuth database models (User/Account/Session/VerificationToken)",
-        "nodes": [
-          "db_table_user",
-          "db_table_account",
-          "db_table_session",
-          "db_table_verification_token"
-        ],
-        "relation": "conceptually_related_to",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "prisma/migrations/20251228175240_auth/migration.sql",
-        "weight": 1.0
-      },
-      {
-        "id": "hyper_itinerary_generation_flow",
-        "label": "Itinerary generation flow (algorithm + client helper + tables)",
-        "nodes": [
-          "claudemd_itinerary_algorithm",
-          "search_panel_generate_itinerary",
-          "db_table_itinerary",
-          "db_table_itinerary_item",
-          "db_table_saved_place"
-        ],
-        "relation": "shares_data_with",
-        "confidence": "EXTRACTED",
-        "confidence_score": 1.0,
-        "source_file": "CLAUDE.md",
-        "weight": 1.0
+        "relation": "participate_in",
+        "confidence": "INFERRED",
+        "confidence_score": 0.95,
+        "source_file": "components/ui/explorer/search-panel.tsx"
       }
     ]
   },
@@ -104,9 +45,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "components_json_config",
-      "community": 4,
-      "norm_label": "shadcn/ui components.json"
+      "community": 7,
+      "norm_label": "shadcn/ui components.json",
+      "id": "components_json_config"
     },
     {
       "label": "ESLint Config",
@@ -117,9 +58,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "eslint_config_mjs",
-      "community": 6,
-      "norm_label": "eslint config"
+      "community": 9,
+      "norm_label": "eslint config",
+      "id": "eslint_config_mjs"
     },
     {
       "label": "Next.js Config",
@@ -130,9 +71,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "next_config_ts",
-      "community": 4,
-      "norm_label": "next.js config"
+      "community": 7,
+      "norm_label": "next.js config",
+      "id": "next_config_ts"
     },
     {
       "label": "package.json (manifest)",
@@ -143,9 +84,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "package_json_manifest",
-      "community": 4,
-      "norm_label": "package.json (manifest)"
+      "community": 0,
+      "norm_label": "package.json (manifest)",
+      "id": "package_json_manifest"
     },
     {
       "label": "payload.json (test fixture)",
@@ -156,9 +97,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "payload_json_fixture",
-      "community": 1,
-      "norm_label": "payload.json (test fixture)"
+      "community": 0,
+      "norm_label": "payload.json (test fixture)",
+      "id": "payload_json_fixture"
     },
     {
       "label": "PostCSS Config",
@@ -169,9 +110,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "postcss_config_mjs",
-      "community": 11,
-      "norm_label": "postcss config"
+      "community": 15,
+      "norm_label": "postcss config",
+      "id": "postcss_config_mjs"
     },
     {
       "label": "Prisma Config",
@@ -182,9 +123,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "prisma_config_ts",
-      "community": 7,
-      "norm_label": "prisma config"
+      "community": 10,
+      "norm_label": "prisma config",
+      "id": "prisma_config_ts"
     },
     {
       "label": "TypeScript Config",
@@ -195,9 +136,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "tsconfig_json_compiler",
-      "community": 0,
-      "norm_label": "typescript config"
+      "community": 5,
+      "norm_label": "typescript config",
+      "id": "tsconfig_json_compiler"
     },
     {
       "label": "app/layout.tsx (RootLayout)",
@@ -208,9 +149,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "layout_tsx_root",
-      "community": 4,
-      "norm_label": "app/layout.tsx (rootlayout)"
+      "community": 7,
+      "norm_label": "app/layout.tsx (rootlayout)",
+      "id": "layout_tsx_root"
     },
     {
       "label": "app/page.tsx (Home)",
@@ -221,9 +162,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "page_tsx_home",
-      "community": 9,
-      "norm_label": "app/page.tsx (home)"
+      "community": 13,
+      "norm_label": "app/page.tsx (home)",
+      "id": "page_tsx_home"
     },
     {
       "label": "app/providers.tsx (Providers)",
@@ -234,9 +175,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "providers_tsx",
-      "community": 4,
-      "norm_label": "app/providers.tsx (providers)"
+      "community": 7,
+      "norm_label": "app/providers.tsx (providers)",
+      "id": "providers_tsx"
     },
     {
       "label": "/api/auth/[...nextauth] route",
@@ -247,9 +188,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_auth_nextauth_route",
-      "community": 1,
-      "norm_label": "/api/auth/[...nextauth] route"
+      "community": 0,
+      "norm_label": "/api/auth/[...nextauth] route",
+      "id": "api_auth_nextauth_route"
     },
     {
       "label": "/api/chat route",
@@ -260,9 +201,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_chat_route",
-      "community": 1,
-      "norm_label": "/api/chat route"
+      "community": 0,
+      "norm_label": "/api/chat route",
+      "id": "api_chat_route"
     },
     {
       "label": "/api/itineraries route",
@@ -273,22 +214,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_itineraries_route",
-      "community": 1,
-      "norm_label": "/api/itineraries route"
-    },
-    {
-      "label": "/api/itineraries/[id]/generate route",
-      "file_type": "code",
-      "source_file": "app/api/itineraries/[id]/generate/route.ts",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "api_itineraries_generate_route",
-      "community": 1,
-      "norm_label": "/api/itineraries/[id]/generate route"
+      "community": 0,
+      "norm_label": "/api/itineraries route",
+      "id": "api_itineraries_route"
     },
     {
       "label": "/api/itineraries/[id]/items route",
@@ -299,9 +227,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_itineraries_items_route",
-      "community": 1,
-      "norm_label": "/api/itineraries/[id]/items route"
+      "community": 0,
+      "norm_label": "/api/itineraries/[id]/items route",
+      "id": "api_itineraries_items_route"
     },
     {
       "label": "/api/places route",
@@ -312,9 +240,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_places_route",
-      "community": 5,
-      "norm_label": "/api/places route"
+      "community": 8,
+      "norm_label": "/api/places route",
+      "id": "api_places_route"
     },
     {
       "label": "/api/saved route",
@@ -325,9 +253,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "api_saved_route",
-      "community": 1,
-      "norm_label": "/api/saved route"
+      "community": 0,
+      "norm_label": "/api/saved route",
+      "id": "api_saved_route"
     },
     {
       "label": "lib/auth.ts (authOptions)",
@@ -338,9 +266,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "lib_auth_authoptions",
-      "community": 1,
-      "norm_label": "lib/auth.ts (authoptions)"
+      "community": 0,
+      "norm_label": "lib/auth.ts (authoptions)",
+      "id": "lib_auth_authoptions"
     },
     {
       "label": "lib/db.ts (prisma client)",
@@ -351,9 +279,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "lib_db_prisma",
-      "community": 1,
-      "norm_label": "lib/db.ts (prisma client)"
+      "community": 0,
+      "norm_label": "lib/db.ts (prisma client)",
+      "id": "lib_db_prisma"
     },
     {
       "label": "lib/redis.ts (getRedis)",
@@ -364,9 +292,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "lib_redis_getRedis",
-      "community": 1,
-      "norm_label": "lib/redis.ts (getredis)"
+      "community": 0,
+      "norm_label": "lib/redis.ts (getredis)",
+      "id": "lib_redis_getRedis"
     },
     {
       "label": "lib/utils.ts (cn helper)",
@@ -377,9 +305,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "lib_utils_cn",
-      "community": 0,
-      "norm_label": "lib/utils.ts (cn helper)"
+      "community": 5,
+      "norm_label": "lib/utils.ts (cn helper)",
+      "id": "lib_utils_cn"
     },
     {
       "label": "docker-compose.yml (Postgres service)",
@@ -390,9 +318,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "docker_compose_yml",
-      "community": 10,
-      "norm_label": "docker-compose.yml (postgres service)"
+      "community": 0,
+      "norm_label": "docker-compose.yml (postgres service)",
+      "id": "docker_compose_yml"
     },
     {
       "label": "pnpm-workspace.yaml",
@@ -403,9 +331,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "pnpm_workspace_yaml",
-      "community": 4,
-      "norm_label": "pnpm-workspace.yaml"
+      "community": 0,
+      "norm_label": "pnpm-workspace.yaml",
+      "id": "pnpm_workspace_yaml"
     },
     {
       "label": "next (framework)",
@@ -416,9 +344,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_next",
-      "community": 4,
-      "norm_label": "next (framework)"
+      "community": 7,
+      "norm_label": "next (framework)",
+      "id": "ext_next"
     },
     {
       "label": "next/server (NextResponse)",
@@ -429,9 +357,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_next_server",
-      "community": 1,
-      "norm_label": "next/server (nextresponse)"
+      "community": 0,
+      "norm_label": "next/server (nextresponse)",
+      "id": "ext_next_server"
     },
     {
       "label": "next-auth",
@@ -442,9 +370,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_next_auth",
-      "community": 1,
-      "norm_label": "next-auth"
+      "community": 0,
+      "norm_label": "next-auth",
+      "id": "ext_next_auth"
     },
     {
       "label": "next-auth/react (SessionProvider)",
@@ -455,9 +383,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_next_auth_react",
-      "community": 4,
-      "norm_label": "next-auth/react (sessionprovider)"
+      "community": 7,
+      "norm_label": "next-auth/react (sessionprovider)",
+      "id": "ext_next_auth_react"
     },
     {
       "label": "next-auth/providers/github",
@@ -468,9 +396,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_next_auth_github",
-      "community": 1,
-      "norm_label": "next-auth/providers/github"
+      "community": 0,
+      "norm_label": "next-auth/providers/github",
+      "id": "ext_next_auth_github"
     },
     {
       "label": "@auth/prisma-adapter",
@@ -481,9 +409,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_auth_prisma_adapter",
-      "community": 1,
-      "norm_label": "@auth/prisma-adapter"
+      "community": 0,
+      "norm_label": "@auth/prisma-adapter",
+      "id": "ext_auth_prisma_adapter"
     },
     {
       "label": "@prisma/client",
@@ -494,9 +422,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_prisma_client",
-      "community": 4,
-      "norm_label": "@prisma/client"
+      "community": 0,
+      "norm_label": "@prisma/client",
+      "id": "ext_prisma_client"
     },
     {
       "label": "@prisma/adapter-pg",
@@ -507,9 +435,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_prisma_adapter_pg",
-      "community": 1,
-      "norm_label": "@prisma/adapter-pg"
+      "community": 0,
+      "norm_label": "@prisma/adapter-pg",
+      "id": "ext_prisma_adapter_pg"
     },
     {
       "label": "@google/generative-ai",
@@ -520,9 +448,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_google_genai",
-      "community": 4,
-      "norm_label": "@google/generative-ai"
+      "community": 0,
+      "norm_label": "@google/generative-ai",
+      "id": "ext_google_genai"
     },
     {
       "label": "redis client",
@@ -533,9 +461,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_redis",
-      "community": 4,
-      "norm_label": "redis client"
+      "community": 0,
+      "norm_label": "redis client",
+      "id": "ext_redis"
     },
     {
       "label": "clsx",
@@ -546,9 +474,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_clsx",
-      "community": 0,
-      "norm_label": "clsx"
+      "community": 5,
+      "norm_label": "clsx",
+      "id": "ext_clsx"
     },
     {
       "label": "tailwind-merge",
@@ -559,9 +487,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_tailwind_merge",
-      "community": 0,
-      "norm_label": "tailwind-merge"
+      "community": 5,
+      "norm_label": "tailwind-merge",
+      "id": "ext_tailwind_merge"
     },
     {
       "label": "dotenv/config",
@@ -572,9 +500,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_dotenv",
-      "community": 7,
-      "norm_label": "dotenv/config"
+      "community": 10,
+      "norm_label": "dotenv/config",
+      "id": "ext_dotenv"
     },
     {
       "label": "next/font/google (Geist)",
@@ -585,9 +513,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_next_font",
-      "community": 4,
-      "norm_label": "next/font/google (geist)"
+      "community": 7,
+      "norm_label": "next/font/google (geist)",
+      "id": "ext_next_font"
     },
     {
       "label": "lucide-react",
@@ -598,9 +526,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_lucide_react",
-      "community": 4,
-      "norm_label": "lucide-react"
+      "community": 7,
+      "norm_label": "lucide-react",
+      "id": "ext_lucide_react"
     },
     {
       "label": "prisma/config",
@@ -611,9 +539,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_prisma_config",
-      "community": 7,
-      "norm_label": "prisma/config"
+      "community": 10,
+      "norm_label": "prisma/config",
+      "id": "ext_prisma_config"
     },
     {
       "label": "eslint/config",
@@ -624,9 +552,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_eslint_config",
-      "community": 6,
-      "norm_label": "eslint/config"
+      "community": 9,
+      "norm_label": "eslint/config",
+      "id": "ext_eslint_config"
     },
     {
       "label": "eslint-config-next/core-web-vitals",
@@ -637,9 +565,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_eslint_next_vitals",
-      "community": 6,
-      "norm_label": "eslint-config-next/core-web-vitals"
+      "community": 9,
+      "norm_label": "eslint-config-next/core-web-vitals",
+      "id": "ext_eslint_next_vitals"
     },
     {
       "label": "eslint-config-next/typescript",
@@ -650,9 +578,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_eslint_next_ts",
-      "community": 6,
-      "norm_label": "eslint-config-next/typescript"
+      "community": 9,
+      "norm_label": "eslint-config-next/typescript",
+      "id": "ext_eslint_next_ts"
     },
     {
       "label": "components/ui/explorer/search-panel (SearchPanel)",
@@ -663,9 +591,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_search_panel_component",
-      "community": 9,
-      "norm_label": "components/ui/explorer/search-panel (searchpanel)"
+      "community": 13,
+      "norm_label": "components/ui/explorer/search-panel (searchpanel)",
+      "id": "ext_search_panel_component"
     },
     {
       "label": "app/globals.css",
@@ -676,9 +604,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_globals_css",
-      "community": 4,
-      "norm_label": "app/globals.css"
+      "community": 7,
+      "norm_label": "app/globals.css",
+      "id": "ext_globals_css"
     },
     {
       "label": "Nominatim (OSM geocoder)",
@@ -689,9 +617,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_nominatim",
-      "community": 5,
-      "norm_label": "nominatim (osm geocoder)"
+      "community": 8,
+      "norm_label": "nominatim (osm geocoder)",
+      "id": "ext_nominatim"
     },
     {
       "label": "OpenTripMap API",
@@ -702,9 +630,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_opentripmap",
-      "community": 5,
-      "norm_label": "opentripmap api"
+      "community": 8,
+      "norm_label": "opentripmap api",
+      "id": "ext_opentripmap"
     },
     {
       "label": "Gemini 2.5 Flash Lite model",
@@ -715,9 +643,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "ext_gemini_model",
-      "community": 1,
-      "norm_label": "gemini 2.5 flash lite model"
+      "community": 0,
+      "norm_label": "gemini 2.5 flash lite model",
+      "id": "ext_gemini_model"
     },
     {
       "label": "LLM tool: search_city",
@@ -728,9 +656,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "tool_search_city",
-      "community": 5,
-      "norm_label": "llm tool: search_city"
+      "community": 8,
+      "norm_label": "llm tool: search_city",
+      "id": "tool_search_city"
     },
     {
       "label": "LLM tool: create_itinerary",
@@ -741,9 +669,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "tool_create_itinerary",
-      "community": 1,
-      "norm_label": "llm tool: create_itinerary"
+      "community": 0,
+      "norm_label": "llm tool: create_itinerary",
+      "id": "tool_create_itinerary"
     },
     {
       "label": "LLM tool: generate_itinerary",
@@ -754,9 +682,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "tool_generate_itinerary",
-      "community": 1,
-      "norm_label": "llm tool: generate_itinerary"
+      "community": 0,
+      "norm_label": "llm tool: generate_itinerary",
+      "id": "tool_generate_itinerary"
     },
     {
       "label": "ChatSideEffect: search",
@@ -767,9 +695,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "side_effect_search",
-      "community": 5,
-      "norm_label": "chatsideeffect: search"
+      "community": 8,
+      "norm_label": "chatsideeffect: search",
+      "id": "side_effect_search"
     },
     {
       "label": "ChatSideEffect: refresh_itineraries",
@@ -780,9 +708,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "side_effect_refresh",
-      "community": 1,
-      "norm_label": "chatsideeffect: refresh_itineraries"
+      "community": 0,
+      "norm_label": "chatsideeffect: refresh_itineraries",
+      "id": "side_effect_refresh"
     },
     {
       "label": "ChatSideEffect: generate",
@@ -793,9 +721,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "side_effect_generate",
-      "community": 1,
-      "norm_label": "chatsideeffect: generate"
+      "community": 0,
+      "norm_label": "chatsideeffect: generate",
+      "id": "side_effect_generate"
     },
     {
       "label": "Prisma model: Itinerary",
@@ -806,9 +734,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "prisma_model_itinerary",
-      "community": 1,
-      "norm_label": "prisma model: itinerary"
+      "community": 0,
+      "norm_label": "prisma model: itinerary",
+      "id": "prisma_model_itinerary"
     },
     {
       "label": "Prisma model: ItineraryItem",
@@ -819,9 +747,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "prisma_model_itineraryItem",
-      "community": 1,
-      "norm_label": "prisma model: itineraryitem"
+      "community": 0,
+      "norm_label": "prisma model: itineraryitem",
+      "id": "prisma_model_itineraryItem"
     },
     {
       "label": "Prisma model: Place",
@@ -832,9 +760,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "prisma_model_place",
-      "community": 1,
-      "norm_label": "prisma model: place"
+      "community": 0,
+      "norm_label": "prisma model: place",
+      "id": "prisma_model_place"
     },
     {
       "label": "Prisma model: SavedPlace",
@@ -845,9 +773,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "prisma_model_savedPlace",
-      "community": 1,
-      "norm_label": "prisma model: savedplace"
+      "community": 0,
+      "norm_label": "prisma model: savedplace",
+      "id": "prisma_model_savedPlace"
     },
     {
       "label": "Prisma model: PlacesQueryCache",
@@ -858,9 +786,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "prisma_model_placesQueryCache",
-      "community": 5,
-      "norm_label": "prisma model: placesquerycache"
+      "community": 8,
+      "norm_label": "prisma model: placesquerycache",
+      "id": "prisma_model_placesQueryCache"
     },
     {
       "label": "Postgres DB service (docker-compose)",
@@ -871,9 +799,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "postgres_service",
-      "community": 10,
-      "norm_label": "postgres db service (docker-compose)"
+      "community": 0,
+      "norm_label": "postgres db service (docker-compose)",
+      "id": "postgres_service"
     },
     {
       "label": "AuthButton component",
@@ -884,9 +812,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "auth_button_component",
-      "community": 0,
-      "norm_label": "authbutton component"
+      "community": 5,
+      "norm_label": "authbutton component",
+      "id": "auth_button_component"
     },
     {
       "label": "ThemeToggle component",
@@ -897,9 +825,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "theme_toggle_component",
-      "community": 0,
-      "norm_label": "themetoggle component"
+      "community": 5,
+      "norm_label": "themetoggle component",
+      "id": "theme_toggle_component"
     },
     {
       "label": "Badge UI primitive",
@@ -910,9 +838,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "badge_ui",
-      "community": 0,
-      "norm_label": "badge ui primitive"
+      "community": 5,
+      "norm_label": "badge ui primitive",
+      "id": "badge_ui"
     },
     {
       "label": "badgeVariants (cva)",
@@ -923,9 +851,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "badge_variants",
-      "community": 0,
-      "norm_label": "badgevariants (cva)"
+      "community": 5,
+      "norm_label": "badgevariants (cva)",
+      "id": "badge_variants"
     },
     {
       "label": "Button UI primitive",
@@ -936,9 +864,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "button_ui",
-      "community": 0,
-      "norm_label": "button ui primitive"
+      "community": 5,
+      "norm_label": "button ui primitive",
+      "id": "button_ui"
     },
     {
       "label": "buttonVariants (cva)",
@@ -949,9 +877,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "button_variants",
-      "community": 0,
-      "norm_label": "buttonvariants (cva)"
+      "community": 5,
+      "norm_label": "buttonvariants (cva)",
+      "id": "button_variants"
     },
     {
       "label": "Card UI primitives",
@@ -962,9 +890,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "card_ui",
-      "community": 0,
-      "norm_label": "card ui primitives"
+      "community": 5,
+      "norm_label": "card ui primitives",
+      "id": "card_ui"
     },
     {
       "label": "Input UI primitive",
@@ -975,9 +903,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "input_ui",
-      "community": 0,
-      "norm_label": "input ui primitive"
+      "community": 5,
+      "norm_label": "input ui primitive",
+      "id": "input_ui"
     },
     {
       "label": "Separator UI primitive",
@@ -988,282 +916,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "separator_ui",
-      "community": 0,
-      "norm_label": "separator ui primitive"
-    },
-    {
-      "label": "SearchPanel root component",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L381",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_root",
-      "community": 0,
-      "norm_label": "searchpanel root component"
-    },
-    {
-      "label": "SearchResultsList subcomponent",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L221-296",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_search_results_list",
-      "community": 0,
-      "norm_label": "searchresultslist subcomponent"
-    },
-    {
-      "label": "ChatPanel subcomponent",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L298-377",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_chat_panel",
-      "community": 0,
-      "norm_label": "chatpanel subcomponent"
-    },
-    {
-      "label": "CategoryBadge subcomponent",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L194-219",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_category_badge",
-      "community": 0,
-      "norm_label": "categorybadge subcomponent"
-    },
-    {
-      "label": "CATEGORY_BADGE_CLASSES color map",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L197-208",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_category_classes",
-      "community": 0,
-      "norm_label": "category_badge_classes color map"
-    },
-    {
-      "label": "fetchSaved() API helper",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L77",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_fetch_saved",
-      "community": 3,
-      "norm_label": "fetchsaved() api helper"
-    },
-    {
-      "label": "savePlace() API helper",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L84",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_save_place",
-      "community": 0,
-      "norm_label": "saveplace() api helper"
-    },
-    {
-      "label": "removePlace() API helper",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L101",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_remove_place",
-      "community": 0,
-      "norm_label": "removeplace() api helper"
-    },
-    {
-      "label": "removeAllSaved() API helper",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L110",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_remove_all_saved",
-      "community": 0,
-      "norm_label": "removeallsaved() api helper"
-    },
-    {
-      "label": "fetchItineraries() API helper",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L124",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_fetch_itineraries",
-      "community": 0,
-      "norm_label": "fetchitineraries() api helper"
-    },
-    {
-      "label": "createItinerary() API helper",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L133",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_create_itinerary",
-      "community": 3,
-      "norm_label": "createitinerary() api helper"
-    },
-    {
-      "label": "fetchItineraryItems() API helper",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L157",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_fetch_itin_items",
-      "community": 0,
-      "norm_label": "fetchitineraryitems() api helper"
-    },
-    {
-      "label": "generateItinerary() API helper",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L166",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_generate_itinerary",
-      "community": 2,
-      "norm_label": "generateitinerary() api helper"
-    },
-    {
-      "label": "removeItineraryItem() API helper",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L180",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_remove_itin_item",
-      "community": 0,
-      "norm_label": "removeitineraryitem() api helper"
-    },
-    {
-      "label": "handleChatSend() in SearchPanel",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L666",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_handle_chat_send",
-      "community": 2,
-      "norm_label": "handlechatsend() in searchpanel"
-    },
-    {
-      "label": "handleSavedDividerMouseDown drag handler",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L577",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_drag_handler",
-      "community": 2,
-      "norm_label": "handlesaveddividermousedown drag handler"
-    },
-    {
-      "label": "savedHeight resize state",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L419-422",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_saved_height_state",
-      "community": 2,
-      "norm_label": "savedheight resize state"
-    },
-    {
-      "label": "ChatSideEffect union type",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L70-73",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_chat_side_effect_type",
-      "community": 2,
-      "norm_label": "chatsideeffect union type"
-    },
-    {
-      "label": "Saved places state",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L387-394",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_saved_state",
-      "community": 3,
-      "norm_label": "saved places state"
-    },
-    {
-      "label": "Itinerary state",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L396-411",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_itinerary_state",
-      "community": 2,
-      "norm_label": "itinerary state"
-    },
-    {
-      "label": "Chat panel state",
-      "file_type": "code",
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L413-416",
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "search_panel_chat_state",
-      "community": 2,
-      "norm_label": "chat panel state"
+      "community": 5,
+      "norm_label": "separator ui primitive",
+      "id": "separator_ui"
     },
     {
       "label": "User table",
@@ -1274,9 +929,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "db_table_user",
       "community": 3,
-      "norm_label": "user table"
+      "norm_label": "user table",
+      "id": "db_table_user"
     },
     {
       "label": "Account table",
@@ -1287,9 +942,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "db_table_account",
       "community": 3,
-      "norm_label": "account table"
+      "norm_label": "account table",
+      "id": "db_table_account"
     },
     {
       "label": "Session table",
@@ -1300,9 +955,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "db_table_session",
       "community": 3,
-      "norm_label": "session table"
+      "norm_label": "session table",
+      "id": "db_table_session"
     },
     {
       "label": "VerificationToken table",
@@ -1313,9 +968,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "db_table_verification_token",
       "community": 3,
-      "norm_label": "verificationtoken table"
+      "norm_label": "verificationtoken table",
+      "id": "db_table_verification_token"
     },
     {
       "label": "Place table",
@@ -1326,9 +981,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "db_table_place",
       "community": 3,
-      "norm_label": "place table"
+      "norm_label": "place table",
+      "id": "db_table_place"
     },
     {
       "label": "SavedPlace table",
@@ -1339,9 +994,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "db_table_saved_place",
       "community": 3,
-      "norm_label": "savedplace table"
+      "norm_label": "savedplace table",
+      "id": "db_table_saved_place"
     },
     {
       "label": "Itinerary table",
@@ -1352,9 +1007,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "db_table_itinerary",
       "community": 3,
-      "norm_label": "itinerary table"
+      "norm_label": "itinerary table",
+      "id": "db_table_itinerary"
     },
     {
       "label": "ItineraryItem table",
@@ -1365,9 +1020,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "db_table_itinerary_item",
       "community": 3,
-      "norm_label": "itineraryitem table"
+      "norm_label": "itineraryitem table",
+      "id": "db_table_itinerary_item"
     },
     {
       "label": "PlacesQueryCache table",
@@ -1378,9 +1033,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "db_table_places_query_cache",
-      "community": 2,
-      "norm_label": "placesquerycache table"
+      "community": 14,
+      "norm_label": "placesquerycache table",
+      "id": "db_table_places_query_cache"
     },
     {
       "label": "Migration: init (Place, SavedPlace)",
@@ -1391,9 +1046,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "migration_init",
       "community": 3,
-      "norm_label": "migration: init (place, savedplace)"
+      "norm_label": "migration: init (place, savedplace)",
+      "id": "migration_init"
     },
     {
       "label": "Migration: auth (User/Account/Session)",
@@ -1404,9 +1059,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "migration_auth",
       "community": 3,
-      "norm_label": "migration: auth (user/account/session)"
+      "norm_label": "migration: auth (user/account/session)",
+      "id": "migration_auth"
     },
     {
       "label": "Migration: itinerary",
@@ -1417,9 +1072,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "migration_itinerary",
       "community": 3,
-      "norm_label": "migration: itinerary"
+      "norm_label": "migration: itinerary",
+      "id": "migration_itinerary"
     },
     {
       "label": "Migration: places_cache",
@@ -1430,9 +1085,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "migration_places_cache",
-      "community": 2,
-      "norm_label": "migration: places_cache"
+      "community": 14,
+      "norm_label": "migration: places_cache",
+      "id": "migration_places_cache"
     },
     {
       "label": "Migration: add_place_coords (lat/lon)",
@@ -1443,9 +1098,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "migration_place_coords",
       "community": 3,
-      "norm_label": "migration: add_place_coords (lat/lon)"
+      "norm_label": "migration: add_place_coords (lat/lon)",
+      "id": "migration_place_coords"
     },
     {
       "label": "Migration: unique_itinerary_title_per_user (index)",
@@ -1456,9 +1111,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "migration_itin_title_idx",
       "community": 3,
-      "norm_label": "migration: unique_itinerary_title_per_user (index)"
+      "norm_label": "migration: unique_itinerary_title_per_user (index)",
+      "id": "migration_itin_title_idx"
     },
     {
       "label": "Migration: itinerary_unique_title_per_user",
@@ -1469,9 +1124,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "migration_itin_title_unique",
       "community": 3,
-      "norm_label": "migration: itinerary_unique_title_per_user"
+      "norm_label": "migration: itinerary_unique_title_per_user",
+      "id": "migration_itin_title_unique"
     },
     {
       "label": "file.svg",
@@ -1482,9 +1137,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "svg_file_icon",
-      "community": 12,
-      "norm_label": "file.svg"
+      "community": 16,
+      "norm_label": "file.svg",
+      "id": "svg_file_icon"
     },
     {
       "label": "globe.svg",
@@ -1495,9 +1150,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "svg_globe_icon",
-      "community": 13,
-      "norm_label": "globe.svg"
+      "community": 17,
+      "norm_label": "globe.svg",
+      "id": "svg_globe_icon"
     },
     {
       "label": "next.svg",
@@ -1508,9 +1163,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "svg_next_icon",
-      "community": 14,
-      "norm_label": "next.svg"
+      "community": 18,
+      "norm_label": "next.svg",
+      "id": "svg_next_icon"
     },
     {
       "label": "vercel.svg",
@@ -1521,9 +1176,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "svg_vercel_icon",
-      "community": 15,
-      "norm_label": "vercel.svg"
+      "community": 19,
+      "norm_label": "vercel.svg",
+      "id": "svg_vercel_icon"
     },
     {
       "label": "window.svg",
@@ -1534,113 +1189,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "svg_window_icon",
-      "community": 16,
-      "norm_label": "window.svg"
-    },
-    {
-      "label": "CLAUDE.md project instructions",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "claudemd_doc",
-      "community": 2,
-      "norm_label": "claude.md project instructions"
-    },
-    {
-      "label": "Two-layer caching architecture (Postgres + Redis)",
-      "file_type": "rationale",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "claudemd_two_layer_caching",
-      "community": 2,
-      "norm_label": "two-layer caching architecture (postgres + redis)"
-    },
-    {
-      "label": "Itinerary generation algorithm (polar sweep + NN greedy)",
-      "file_type": "rationale",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "claudemd_itinerary_algorithm",
-      "community": 2,
-      "norm_label": "itinerary generation algorithm (polar sweep + nn greedy)"
-    },
-    {
-      "label": "Chat assistant tools (search_city, create_itinerary, generate_itinerary)",
-      "file_type": "rationale",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "claudemd_chat_assistant_tools",
-      "community": 2,
-      "norm_label": "chat assistant tools (search_city, create_itinerary, generate_itinerary)"
-    },
-    {
-      "label": "Side-effect contract (chat returns sideEffects[])",
-      "file_type": "rationale",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "claudemd_side_effect_contract",
-      "community": 2,
-      "norm_label": "side-effect contract (chat returns sideeffects[])"
-    },
-    {
-      "label": "Auth pattern (getServerSession + user.id injection)",
-      "file_type": "rationale",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "claudemd_auth_pattern",
-      "community": 0,
-      "norm_label": "auth pattern (getserversession + user.id injection)"
-    },
-    {
-      "label": "Workflow rules (plan before code; log session)",
-      "file_type": "rationale",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "claudemd_workflow_rules",
-      "community": 2,
-      "norm_label": "workflow rules (plan before code; log session)"
-    },
-    {
-      "label": "Drag re-anchor pattern (cursor glued to divider)",
-      "file_type": "rationale",
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "source_url": null,
-      "captured_at": null,
-      "author": null,
-      "contributor": null,
-      "id": "claudemd_drag_reanchor",
-      "community": 2,
-      "norm_label": "drag re-anchor pattern (cursor glued to divider)"
+      "community": 20,
+      "norm_label": "window.svg",
+      "id": "svg_window_icon"
     },
     {
       "label": "README.md",
@@ -1651,9 +1202,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_doc",
-      "community": 2,
-      "norm_label": "readme.md"
+      "community": 11,
+      "norm_label": "readme.md",
+      "id": "readme_doc"
     },
     {
       "label": "Tech stack (Next.js, Prisma, NextAuth, Gemini, pnpm)",
@@ -1664,9 +1215,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_tech_stack",
-      "community": 2,
-      "norm_label": "tech stack (next.js, prisma, nextauth, gemini, pnpm)"
+      "community": 11,
+      "norm_label": "tech stack (next.js, prisma, nextauth, gemini, pnpm)",
+      "id": "readme_tech_stack"
     },
     {
       "label": "Environment setup (.env.local required keys)",
@@ -1677,9 +1228,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "readme_env_setup",
-      "community": 2,
-      "norm_label": "environment setup (.env.local required keys)"
+      "community": 11,
+      "norm_label": "environment setup (.env.local required keys)",
+      "id": "readme_env_setup"
     },
     {
       "label": ".claude/settings.json (allowlist)",
@@ -1690,9 +1241,9 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "claude_settings_project",
-      "community": 8,
-      "norm_label": ".claude/settings.json (allowlist)"
+      "community": 12,
+      "norm_label": ".claude/settings.json (allowlist)",
+      "id": "claude_settings_project"
     },
     {
       "label": ".claude/settings.local.json (local allowlist)",
@@ -1703,9 +1254,678 @@
       "captured_at": null,
       "author": null,
       "contributor": null,
-      "id": "claude_settings_local",
-      "community": 8,
-      "norm_label": ".claude/settings.local.json (local allowlist)"
+      "community": 12,
+      "norm_label": ".claude/settings.local.json (local allowlist)",
+      "id": "claude_settings_local"
+    },
+    {
+      "label": "route.ts",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L1",
+      "id": "app_api_itineraries_id_generate_route_ts",
+      "community": 6,
+      "norm_label": "route.ts"
+    },
+    {
+      "label": "itemsCacheKey()",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L9",
+      "id": "generate_route_itemscachekey",
+      "community": 6,
+      "norm_label": "itemscachekey()"
+    },
+    {
+      "label": "requireUserId()",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L13",
+      "id": "generate_route_requireuserid",
+      "community": 6,
+      "norm_label": "requireuserid()"
+    },
+    {
+      "label": "P",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L19",
+      "id": "generate_route_p",
+      "community": 6,
+      "norm_label": "p"
+    },
+    {
+      "label": "GenerateBody",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L27",
+      "id": "generate_route_generatebody",
+      "community": 6,
+      "norm_label": "generatebody"
+    },
+    {
+      "label": "dist2()",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L34",
+      "id": "generate_route_dist2",
+      "community": 6,
+      "norm_label": "dist2()"
+    },
+    {
+      "label": "sampleInOrder()",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L42",
+      "id": "generate_route_sampleinorder",
+      "community": 6,
+      "norm_label": "sampleinorder()"
+    },
+    {
+      "label": "assignDays()",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L58",
+      "id": "generate_route_assigndays",
+      "community": 6,
+      "norm_label": "assigndays()"
+    },
+    {
+      "label": "orderWithinDay()",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L114",
+      "id": "generate_route_orderwithinday",
+      "community": 6,
+      "norm_label": "orderwithinday()"
+    },
+    {
+      "label": "POST()",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L150",
+      "id": "generate_route_post",
+      "community": 6,
+      "norm_label": "post()"
+    },
+    {
+      "label": "search-panel.tsx",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L1",
+      "id": "components_ui_explorer_search_panel_tsx",
+      "community": 1,
+      "norm_label": "search-panel.tsx"
+    },
+    {
+      "label": "SavedItem",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L17",
+      "id": "explorer_search_panel_saveditem",
+      "community": 1,
+      "norm_label": "saveditem"
+    },
+    {
+      "label": "Itinerary",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L28",
+      "id": "explorer_search_panel_itinerary",
+      "community": 1,
+      "norm_label": "itinerary"
+    },
+    {
+      "label": "ItineraryItem",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L37",
+      "id": "explorer_search_panel_itineraryitem",
+      "community": 1,
+      "norm_label": "itineraryitem"
+    },
+    {
+      "label": "PlaceResult",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L55",
+      "id": "explorer_search_panel_placeresult",
+      "community": 1,
+      "norm_label": "placeresult"
+    },
+    {
+      "label": "ChatMessage",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L65",
+      "id": "explorer_search_panel_chatmessage",
+      "community": 1,
+      "norm_label": "chatmessage"
+    },
+    {
+      "label": "ChatSideEffect",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L70",
+      "id": "explorer_search_panel_chatsideeffect",
+      "community": 1,
+      "norm_label": "chatsideeffect"
+    },
+    {
+      "label": "fetchSaved()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L77",
+      "id": "explorer_search_panel_fetchsaved",
+      "community": 1,
+      "norm_label": "fetchsaved()"
+    },
+    {
+      "label": "savePlace()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L84",
+      "id": "explorer_search_panel_saveplace",
+      "community": 1,
+      "norm_label": "saveplace()"
+    },
+    {
+      "label": "removePlace()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L101",
+      "id": "explorer_search_panel_removeplace",
+      "community": 1,
+      "norm_label": "removeplace()"
+    },
+    {
+      "label": "removeAllSaved()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L110",
+      "id": "explorer_search_panel_removeallsaved",
+      "community": 1,
+      "norm_label": "removeallsaved()"
+    },
+    {
+      "label": "fetchItineraries()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L124",
+      "id": "explorer_search_panel_fetchitineraries",
+      "community": 1,
+      "norm_label": "fetchitineraries()"
+    },
+    {
+      "label": "createItinerary()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L133",
+      "id": "explorer_search_panel_createitinerary",
+      "community": 1,
+      "norm_label": "createitinerary()"
+    },
+    {
+      "label": "fetchItineraryItems()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L157",
+      "id": "explorer_search_panel_fetchitineraryitems",
+      "community": 1,
+      "norm_label": "fetchitineraryitems()"
+    },
+    {
+      "label": "generateItinerary()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L166",
+      "id": "explorer_search_panel_generateitinerary",
+      "community": 1,
+      "norm_label": "generateitinerary()"
+    },
+    {
+      "label": "removeItineraryItem()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L180",
+      "id": "explorer_search_panel_removeitineraryitem",
+      "community": 1,
+      "norm_label": "removeitineraryitem()"
+    },
+    {
+      "label": "CATEGORY_BADGE_CLASSES",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L197",
+      "id": "explorer_search_panel_category_badge_classes",
+      "community": 1,
+      "norm_label": "category_badge_classes"
+    },
+    {
+      "label": "CategoryBadge()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L211",
+      "id": "explorer_search_panel_categorybadge",
+      "community": 1,
+      "norm_label": "categorybadge()"
+    },
+    {
+      "label": "SearchResultsListProps",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L223",
+      "id": "explorer_search_panel_searchresultslistprops",
+      "community": 1,
+      "norm_label": "searchresultslistprops"
+    },
+    {
+      "label": "SearchResultsList()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L231",
+      "id": "explorer_search_panel_searchresultslist",
+      "community": 1,
+      "norm_label": "searchresultslist()"
+    },
+    {
+      "label": "ChatPanelProps",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L300",
+      "id": "explorer_search_panel_chatpanelprops",
+      "community": 1,
+      "norm_label": "chatpanelprops"
+    },
+    {
+      "label": "ChatPanel()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L308",
+      "id": "explorer_search_panel_chatpanel",
+      "community": 1,
+      "norm_label": "chatpanel()"
+    },
+    {
+      "label": "SearchPanel()",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L381",
+      "id": "explorer_search_panel_searchpanel",
+      "community": 1,
+      "norm_label": "searchpanel()"
+    },
+    {
+      "label": "POST /api/itineraries/[id]/generate handler",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L150-L285",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "generate_POST",
+      "community": 4,
+      "norm_label": "post /api/itineraries/[id]/generate handler"
+    },
+    {
+      "label": "assignDays (angle-sweep day distribution)",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L58-L112",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "generate_assignDays",
+      "community": 4,
+      "norm_label": "assigndays (angle-sweep day distribution)"
+    },
+    {
+      "label": "orderWithinDay (nearest-neighbour day ordering)",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L114-L148",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "generate_orderWithinDay",
+      "community": 4,
+      "norm_label": "orderwithinday (nearest-neighbour day ordering)"
+    },
+    {
+      "label": "sampleInOrder (order-preserving random trim)",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L42-L54",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "generate_sampleInOrder",
+      "community": 4,
+      "norm_label": "sampleinorder (order-preserving random trim)"
+    },
+    {
+      "label": "dist2 (squared Euclidean distance)",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L34-L38",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "generate_dist2",
+      "community": 4,
+      "norm_label": "dist2 (squared euclidean distance)"
+    },
+    {
+      "label": "requireUserId (session user extraction)",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L13-L17",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "generate_requireUserId",
+      "community": 4,
+      "norm_label": "requireuserid (session user extraction)"
+    },
+    {
+      "label": "itemsCacheKey (Redis itinerary-items cache key)",
+      "file_type": "code",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L9-L11",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "generate_itemsCacheKey",
+      "community": 4,
+      "norm_label": "itemscachekey (redis itinerary-items cache key)"
+    },
+    {
+      "label": "Contiguous Angle-Sweep Geographic Clustering",
+      "file_type": "rationale",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L83-L91",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "Places are sorted by polar angle around the centroid and chunked into contiguous arc slices (Day 0 = first arc, Day 1 = next arc). Round-robin (i % daysCount) would interleave clusters and defeat the sweep, so each day stays a geographic cluster.",
+      "id": "generate_angle_sweep_clustering",
+      "community": 4,
+      "norm_label": "contiguous angle-sweep geographic clustering"
+    },
+    {
+      "label": "Random Rotation of Angle Sweep Start",
+      "file_type": "rationale",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L76-L81",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "The angle sort is deterministic, so without rotation a shuffled input produces the exact same arcs every run. Starting the sweep at a random offset (only when shuffle=true) changes where arc boundaries fall while keeping each day a contiguous slice of the circle.",
+      "id": "generate_random_sweep_rotation",
+      "community": 4,
+      "norm_label": "random rotation of angle sweep start"
+    },
+    {
+      "label": "Order-Preserving Random Trim (sampleInOrder)",
+      "file_type": "rationale",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L40-L54",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "When shuffling, keep a random subset of at most k items but re-sort the picked indices ascending to preserve the original angle-sweep order, so the trimmed day still reads as one contiguous arc. Trim is applied per-day after assignment because a global pre-trim would just drop the tail in createdAt order and destroy spatial clusters.",
+      "id": "generate_random_trim_in_order",
+      "community": 4,
+      "norm_label": "order-preserving random trim (sampleinorder)"
+    },
+    {
+      "label": "Random Nearest-Neighbour Start Point",
+      "file_type": "rationale",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L126-L128",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "The greedy nearest-neighbour walk starts at a random point when shuffle=true (index 0 otherwise) so the within-day walking path varies between shuffled runs; the greedy traversal itself remains deterministic given the start.",
+      "id": "generate_random_nn_start",
+      "community": 4,
+      "norm_label": "random nearest-neighbour start point"
+    },
+    {
+      "label": "Pre-Shuffle Limitation of Eligible Places",
+      "file_type": "rationale",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L205-L214",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "Fisher-Yates-style pre-shuffle of eligible places alone cannot vary output because assignDays re-sorts by angle; it only randomizes angle-sort ties (co-located places) and the no-coords round-robin. The real shuffle variation comes from the random sweep rotation, the random in-order trim, and the random nearest-neighbour start.",
+      "id": "generate_eligible_preshuffle",
+      "community": 4,
+      "norm_label": "pre-shuffle limitation of eligible places"
+    },
+    {
+      "label": "SearchPanel component (root UI state)",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L381-L1250",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_SearchPanel",
+      "community": 2,
+      "norm_label": "searchpanel component (root ui state)"
+    },
+    {
+      "label": "ChatPanel component",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L308-L377",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_ChatPanel",
+      "community": 2,
+      "norm_label": "chatpanel component"
+    },
+    {
+      "label": "SearchResultsList component",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L231-L296",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_SearchResultsList",
+      "community": 2,
+      "norm_label": "searchresultslist component"
+    },
+    {
+      "label": "CategoryBadge component",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L211-L219",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_CategoryBadge",
+      "community": 2,
+      "norm_label": "categorybadge component"
+    },
+    {
+      "label": "handleChatSend (chat round-trip + side-effect applier)",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L673-L756",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_handleChatSend",
+      "community": 2,
+      "norm_label": "handlechatsend (chat round-trip + side-effect applier)"
+    },
+    {
+      "label": "generateItinerary API helper (client)",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L166-L178",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_generateItinerary",
+      "community": 2,
+      "norm_label": "generateitinerary api helper (client)"
+    },
+    {
+      "label": "fetchItineraries API helper",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L124-L131",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_fetchItineraries",
+      "community": 2,
+      "norm_label": "fetchitineraries api helper"
+    },
+    {
+      "label": "fetchItineraryItems API helper",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L157-L164",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_fetchItineraryItems",
+      "community": 2,
+      "norm_label": "fetchitineraryitems api helper"
+    },
+    {
+      "label": "fetchSaved API helper",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L77-L82",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_fetchSaved",
+      "community": 2,
+      "norm_label": "fetchsaved api helper"
+    },
+    {
+      "label": "createItinerary API helper (409 duplicate handling)",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L133-L155",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_createItinerary",
+      "community": 2,
+      "norm_label": "createitinerary api helper (409 duplicate handling)"
+    },
+    {
+      "label": "performSearch (/api/places fetch)",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L643-L661",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_performSearch",
+      "community": 2,
+      "norm_label": "performsearch (/api/places fetch)"
+    },
+    {
+      "label": "handleSavedDividerMouseDown (saved-section drag resize)",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L584-L622",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_handleSavedDividerMouseDown",
+      "community": 2,
+      "norm_label": "handlesaveddividermousedown (saved-section drag resize)"
+    },
+    {
+      "label": "ChatSideEffect type (search | refresh_itineraries | generate)",
+      "file_type": "code",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L70-L73",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "id": "search_panel_ChatSideEffect",
+      "community": 2,
+      "norm_label": "chatsideeffect type (search | refresh_itineraries | generate)"
+    },
+    {
+      "label": "Itinerary Generation Algorithm (documented)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Itinerary Generation Algorithm",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "Documents the pipeline: eligibility filter (lat/lon required), optional shuffle, angle-sweep contiguous-arc day assignment, per-day trim applied after assignment to preserve spatial clusters (a global pre-trim would drop the createdAt tail), and nearest-neighbour greedy ordering within each day with short days (<=2) skipping the greedy pass.",
+      "id": "claude_md_itinerary_generation_algorithm",
+      "community": 4,
+      "norm_label": "itinerary generation algorithm (documented)"
+    },
+    {
+      "label": "Chat Side-Effect Contract (documented)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Chat Assistant",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "The chat route does no side-effect work itself; it returns sideEffects[] which the client applies (search, refresh_itineraries, generate). If the generate POST throws, the client surfaces the real error as 'Generation failed: <msg>' instead of the LLM's optimistic message.",
+      "id": "claude_md_chat_side_effect_contract",
+      "community": 2,
+      "norm_label": "chat side-effect contract (documented)"
+    },
+    {
+      "label": "Drag Re-Anchor Pattern",
+      "file_type": "rationale",
+      "source_file": "CLAUDE.md",
+      "source_location": "Changelog 2026-05-26",
+      "source_url": null,
+      "captured_at": null,
+      "author": null,
+      "contributor": null,
+      "rationale": "Drag uses a re-anchor pattern (lastY / currentHeight advanced only by actualDelta) so the cursor stays glued to the divider line in both directions, even after pushing past a bound. Bounds: min = default 256px, max = the inner list's natural offsetHeight.",
+      "id": "claude_md_drag_reanchor_pattern",
+      "community": 2,
+      "norm_label": "drag re-anchor pattern"
     }
   ],
   "links": [
@@ -1836,8 +2056,8 @@
       "source_file": "pnpm-workspace.yaml",
       "source_location": null,
       "weight": 1.0,
-      "source": "pnpm_workspace_yaml",
-      "target": "package_json_manifest"
+      "source": "package_json_manifest",
+      "target": "pnpm_workspace_yaml"
     },
     {
       "relation": "shares_data_with",
@@ -2066,8 +2286,8 @@
       "source_file": "app/api/chat/route.ts",
       "source_location": null,
       "weight": 1.0,
-      "source": "side_effect_refresh",
-      "target": "api_itineraries_route"
+      "source": "api_itineraries_route",
+      "target": "side_effect_refresh"
     },
     {
       "relation": "imports",
@@ -2128,106 +2348,6 @@
       "weight": 1.0,
       "source": "api_itineraries_route",
       "target": "prisma_model_itinerary"
-    },
-    {
-      "relation": "semantically_similar_to",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "app/api/itineraries/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "api_itineraries_route",
-      "target": "api_itineraries_generate_route"
-    },
-    {
-      "relation": "references",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
-      "source_file": "app/api/chat/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "side_effect_generate",
-      "target": "api_itineraries_generate_route"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/api/itineraries/[id]/generate/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "api_itineraries_generate_route",
-      "target": "ext_next_server"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/api/itineraries/[id]/generate/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "api_itineraries_generate_route",
-      "target": "lib_db_prisma"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/api/itineraries/[id]/generate/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "api_itineraries_generate_route",
-      "target": "ext_next_auth"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/api/itineraries/[id]/generate/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "api_itineraries_generate_route",
-      "target": "lib_auth_authoptions"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/api/itineraries/[id]/generate/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "api_itineraries_generate_route",
-      "target": "lib_redis_getRedis"
-    },
-    {
-      "relation": "shares_data_with",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/api/itineraries/[id]/generate/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "api_itineraries_generate_route",
-      "target": "prisma_model_itinerary"
-    },
-    {
-      "relation": "shares_data_with",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/api/itineraries/[id]/generate/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "api_itineraries_generate_route",
-      "target": "prisma_model_itineraryItem"
-    },
-    {
-      "relation": "shares_data_with",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/api/itineraries/[id]/generate/route.ts",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "api_itineraries_generate_route",
-      "target": "prisma_model_savedPlace"
     },
     {
       "relation": "imports",
@@ -2306,8 +2426,8 @@
       "source_file": "app/api/chat/route.ts",
       "source_location": null,
       "weight": 1.0,
-      "source": "side_effect_search",
-      "target": "api_places_route"
+      "source": "api_places_route",
+      "target": "side_effect_search"
     },
     {
       "relation": "imports",
@@ -2366,8 +2486,8 @@
       "source_file": "app/api/saved/route.ts",
       "source_location": null,
       "weight": 1.0,
-      "source": "api_saved_route",
-      "target": "api_places_route"
+      "source": "api_places_route",
+      "target": "api_saved_route"
     },
     {
       "relation": "imports",
@@ -2566,8 +2686,8 @@
       "source_file": "components/ui/badge.tsx",
       "source_location": "L5",
       "weight": 1.0,
-      "source": "badge_ui",
-      "target": "lib_utils_cn"
+      "source": "lib_utils_cn",
+      "target": "badge_ui"
     },
     {
       "relation": "imports",
@@ -2576,8 +2696,8 @@
       "source_file": "components/ui/button.tsx",
       "source_location": "L5",
       "weight": 1.0,
-      "source": "button_ui",
-      "target": "lib_utils_cn"
+      "source": "lib_utils_cn",
+      "target": "button_ui"
     },
     {
       "relation": "imports",
@@ -2586,8 +2706,8 @@
       "source_file": "components/ui/card.tsx",
       "source_location": "L3",
       "weight": 1.0,
-      "source": "card_ui",
-      "target": "lib_utils_cn"
+      "source": "lib_utils_cn",
+      "target": "card_ui"
     },
     {
       "relation": "imports",
@@ -2596,8 +2716,8 @@
       "source_file": "components/ui/input.tsx",
       "source_location": "L3",
       "weight": 1.0,
-      "source": "input_ui",
-      "target": "lib_utils_cn"
+      "source": "lib_utils_cn",
+      "target": "input_ui"
     },
     {
       "relation": "imports",
@@ -2606,8 +2726,8 @@
       "source_file": "components/ui/separator.tsx",
       "source_location": "L6",
       "weight": 1.0,
-      "source": "separator_ui",
-      "target": "lib_utils_cn"
+      "source": "lib_utils_cn",
+      "target": "separator_ui"
     },
     {
       "relation": "implements",
@@ -2693,41 +2813,11 @@
       "relation": "imports",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L11",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "auth_button_component"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_auth_pattern",
-      "target": "auth_button_component"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
       "source_file": "components/theme-toggle.tsx",
       "source_location": "L5",
       "weight": 1.0,
       "source": "theme_toggle_component",
       "target": "button_ui"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L12",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "theme_toggle_component"
     },
     {
       "relation": "calls",
@@ -2740,26 +2830,6 @@
       "target": "badge_variants"
     },
     {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L7",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "badge_ui"
-    },
-    {
-      "relation": "calls",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_category_badge",
-      "target": "badge_ui"
-    },
-    {
       "relation": "calls",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
@@ -2770,334 +2840,14 @@
       "target": "button_variants"
     },
     {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L6",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "button_ui"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L4",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "card_ui"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L5",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "input_ui"
-    },
-    {
-      "relation": "imports",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L8",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "separator_ui"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_search_results_list"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L840",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_chat_panel"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_fetch_saved"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_save_place"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_remove_place"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_remove_all_saved"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_fetch_itineraries"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_create_itinerary"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_fetch_itin_items"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L1130",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_generate_itinerary"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_remove_itin_item"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L840",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_handle_chat_send"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L988",
-      "weight": 1.0,
-      "source": "search_panel_root",
-      "target": "search_panel_drag_handler"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_search_results_list",
-      "target": "search_panel_category_badge"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L211",
-      "weight": 1.0,
-      "source": "search_panel_category_badge",
-      "target": "search_panel_category_classes"
-    },
-    {
-      "relation": "shares_data_with",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_fetch_saved",
-      "target": "search_panel_saved_state"
-    },
-    {
-      "relation": "references",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_fetch_saved",
-      "target": "db_table_saved_place"
-    },
-    {
-      "relation": "references",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_create_itinerary",
-      "target": "db_table_itinerary"
-    },
-    {
-      "relation": "calls",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L710",
-      "weight": 1.0,
-      "source": "search_panel_handle_chat_send",
-      "target": "search_panel_generate_itinerary"
-    },
-    {
-      "relation": "shares_data_with",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_generate_itinerary",
-      "target": "search_panel_itinerary_state"
-    },
-    {
-      "relation": "references",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_generate_itinerary",
-      "target": "db_table_itinerary_item"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_itinerary_algorithm",
-      "target": "search_panel_generate_itinerary"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": "L708",
-      "weight": 1.0,
-      "source": "search_panel_handle_chat_send",
-      "target": "search_panel_chat_side_effect_type"
-    },
-    {
-      "relation": "implements",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_handle_chat_send",
-      "target": "claudemd_side_effect_contract"
-    },
-    {
-      "relation": "shares_data_with",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_handle_chat_send",
-      "target": "search_panel_chat_state"
-    },
-    {
-      "relation": "conceptually_related_to",
-      "confidence": "INFERRED",
-      "confidence_score": 0.85,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_chat_assistant_tools",
-      "target": "search_panel_handle_chat_send"
-    },
-    {
-      "relation": "shares_data_with",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_drag_handler",
-      "target": "search_panel_saved_height_state"
-    },
-    {
-      "relation": "implements",
-      "confidence": "INFERRED",
-      "confidence_score": 0.95,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "search_panel_drag_handler",
-      "target": "claudemd_drag_reanchor"
-    },
-    {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "prisma/migrations/20251228175240_auth/migration.sql",
       "source_location": "L20",
       "weight": 1.0,
-      "source": "migration_auth",
-      "target": "db_table_user"
+      "source": "db_table_user",
+      "target": "migration_auth"
     },
     {
       "relation": "references",
@@ -3106,8 +2856,8 @@
       "source_file": "prisma/migrations/20251228175240_auth/migration.sql",
       "source_location": "L89",
       "weight": 1.0,
-      "source": "db_table_account",
-      "target": "db_table_user"
+      "source": "db_table_user",
+      "target": "db_table_account"
     },
     {
       "relation": "references",
@@ -3116,8 +2866,8 @@
       "source_file": "prisma/migrations/20251228175240_auth/migration.sql",
       "source_location": "L92",
       "weight": 1.0,
-      "source": "db_table_session",
-      "target": "db_table_user"
+      "source": "db_table_user",
+      "target": "db_table_session"
     },
     {
       "relation": "references",
@@ -3126,8 +2876,8 @@
       "source_file": "prisma/migrations/20251228175240_auth/migration.sql",
       "source_location": "L95",
       "weight": 1.0,
-      "source": "db_table_saved_place",
-      "target": "db_table_user"
+      "source": "db_table_user",
+      "target": "db_table_saved_place"
     },
     {
       "relation": "references",
@@ -3136,8 +2886,8 @@
       "source_file": "prisma/migrations/20251229164858_itinerary/migration.sql",
       "source_location": "L34",
       "weight": 1.0,
-      "source": "db_table_itinerary",
-      "target": "db_table_user"
+      "source": "db_table_user",
+      "target": "db_table_itinerary"
     },
     {
       "relation": "references",
@@ -3146,8 +2896,8 @@
       "source_file": "prisma/migrations/20251228175240_auth/migration.sql",
       "source_location": "L33",
       "weight": 1.0,
-      "source": "migration_auth",
-      "target": "db_table_account"
+      "source": "db_table_account",
+      "target": "migration_auth"
     },
     {
       "relation": "references",
@@ -3156,8 +2906,8 @@
       "source_file": "prisma/migrations/20251228175240_auth/migration.sql",
       "source_location": "L51",
       "weight": 1.0,
-      "source": "migration_auth",
-      "target": "db_table_session"
+      "source": "db_table_session",
+      "target": "migration_auth"
     },
     {
       "relation": "references",
@@ -3166,8 +2916,8 @@
       "source_file": "prisma/migrations/20251228175240_auth/migration.sql",
       "source_location": "L61",
       "weight": 1.0,
-      "source": "migration_auth",
-      "target": "db_table_verification_token"
+      "source": "db_table_verification_token",
+      "target": "migration_auth"
     },
     {
       "relation": "references",
@@ -3176,8 +2926,8 @@
       "source_file": "prisma/migrations/20251227184755_init/migration.sql",
       "source_location": "L2",
       "weight": 1.0,
-      "source": "migration_init",
-      "target": "db_table_place"
+      "source": "db_table_place",
+      "target": "migration_init"
     },
     {
       "relation": "references",
@@ -3186,8 +2936,8 @@
       "source_file": "prisma/migrations/20251227184755_init/migration.sql",
       "source_location": "L34",
       "weight": 1.0,
-      "source": "db_table_saved_place",
-      "target": "db_table_place"
+      "source": "db_table_place",
+      "target": "db_table_saved_place"
     },
     {
       "relation": "references",
@@ -3196,8 +2946,8 @@
       "source_file": "prisma/migrations/20251229164858_itinerary/migration.sql",
       "source_location": "L40",
       "weight": 1.0,
-      "source": "db_table_itinerary_item",
-      "target": "db_table_place"
+      "source": "db_table_place",
+      "target": "db_table_itinerary_item"
     },
     {
       "relation": "references",
@@ -3206,8 +2956,8 @@
       "source_file": "prisma/migrations/20251231035512_add_place_coords/migration.sql",
       "source_location": "L2",
       "weight": 1.0,
-      "source": "migration_place_coords",
-      "target": "db_table_place"
+      "source": "db_table_place",
+      "target": "migration_place_coords"
     },
     {
       "relation": "references",
@@ -3216,8 +2966,8 @@
       "source_file": "prisma/migrations/20251227184755_init/migration.sql",
       "source_location": "L15",
       "weight": 1.0,
-      "source": "migration_init",
-      "target": "db_table_saved_place"
+      "source": "db_table_saved_place",
+      "target": "migration_init"
     },
     {
       "relation": "references",
@@ -3226,8 +2976,8 @@
       "source_file": "prisma/migrations/20251229164858_itinerary/migration.sql",
       "source_location": "L2",
       "weight": 1.0,
-      "source": "migration_itinerary",
-      "target": "db_table_itinerary"
+      "source": "db_table_itinerary",
+      "target": "migration_itinerary"
     },
     {
       "relation": "references",
@@ -3236,8 +2986,8 @@
       "source_file": "prisma/migrations/20251229164858_itinerary/migration.sql",
       "source_location": "L37",
       "weight": 1.0,
-      "source": "db_table_itinerary_item",
-      "target": "db_table_itinerary"
+      "source": "db_table_itinerary",
+      "target": "db_table_itinerary_item"
     },
     {
       "relation": "references",
@@ -3246,8 +2996,8 @@
       "source_file": "prisma/migrations/20260103050333_unique_itinerary_title_per_user/migration.sql",
       "source_location": "L5",
       "weight": 1.0,
-      "source": "migration_itin_title_idx",
-      "target": "db_table_itinerary"
+      "source": "db_table_itinerary",
+      "target": "migration_itin_title_idx"
     },
     {
       "relation": "references",
@@ -3256,8 +3006,8 @@
       "source_file": "prisma/migrations/20260103052727_itinerary_unique_title_per_user/migration.sql",
       "source_location": "L11",
       "weight": 1.0,
-      "source": "migration_itin_title_unique",
-      "target": "db_table_itinerary"
+      "source": "db_table_itinerary",
+      "target": "migration_itin_title_unique"
     },
     {
       "relation": "references",
@@ -3266,8 +3016,8 @@
       "source_file": "prisma/migrations/20251229164858_itinerary/migration.sql",
       "source_location": "L15",
       "weight": 1.0,
-      "source": "migration_itinerary",
-      "target": "db_table_itinerary_item"
+      "source": "db_table_itinerary_item",
+      "target": "migration_itinerary"
     },
     {
       "relation": "references",
@@ -3276,98 +3026,8 @@
       "source_file": "prisma/migrations/20251230040649_places_cache/migration.sql",
       "source_location": "L2",
       "weight": 1.0,
-      "source": "migration_places_cache",
-      "target": "db_table_places_query_cache"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_two_layer_caching",
-      "target": "db_table_places_query_cache"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_doc",
-      "target": "claudemd_two_layer_caching"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_doc",
-      "target": "claudemd_itinerary_algorithm"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_doc",
-      "target": "claudemd_chat_assistant_tools"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_doc",
-      "target": "claudemd_side_effect_contract"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_doc",
-      "target": "claudemd_auth_pattern"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_doc",
-      "target": "claudemd_workflow_rules"
-    },
-    {
-      "relation": "rationale_for",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "claudemd_doc",
-      "target": "claudemd_drag_reanchor"
-    },
-    {
-      "relation": "semantically_similar_to",
-      "confidence": "INFERRED",
-      "confidence_score": 0.75,
-      "source_file": "README.md",
-      "source_location": null,
-      "weight": 1.0,
-      "source": "readme_tech_stack",
-      "target": "claudemd_doc"
+      "source": "db_table_places_query_cache",
+      "target": "migration_places_cache"
     },
     {
       "relation": "rationale_for",
@@ -3398,98 +3058,793 @@
       "weight": 1.0,
       "source": "claude_settings_project",
       "target": "claude_settings_local"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L9",
+      "weight": 1.0,
+      "source": "app_api_itineraries_id_generate_route_ts",
+      "target": "generate_route_itemscachekey",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "app_api_itineraries_id_generate_route_ts",
+      "target": "generate_route_requireuserid",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "app_api_itineraries_id_generate_route_ts",
+      "target": "generate_route_p",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "app_api_itineraries_id_generate_route_ts",
+      "target": "generate_route_generatebody",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L34",
+      "weight": 1.0,
+      "source": "app_api_itineraries_id_generate_route_ts",
+      "target": "generate_route_dist2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L42",
+      "weight": 1.0,
+      "source": "app_api_itineraries_id_generate_route_ts",
+      "target": "generate_route_sampleinorder",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "app_api_itineraries_id_generate_route_ts",
+      "target": "generate_route_assigndays",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "app_api_itineraries_id_generate_route_ts",
+      "target": "generate_route_orderwithinday",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L150",
+      "weight": 1.0,
+      "source": "app_api_itineraries_id_generate_route_ts",
+      "target": "generate_route_post",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L268",
+      "weight": 1.0,
+      "source": "generate_route_post",
+      "target": "generate_route_itemscachekey",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "generate_route_post",
+      "target": "generate_route_requireuserid",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L137",
+      "weight": 1.0,
+      "source": "generate_route_orderwithinday",
+      "target": "generate_route_dist2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L220",
+      "weight": 1.0,
+      "source": "generate_route_post",
+      "target": "generate_route_assigndays",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_saveditem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_itinerary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_itineraryitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L55",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_placeresult",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_chatmessage",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L70",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_chatsideeffect",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L77",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_fetchsaved",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L84",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_saveplace",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L101",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_removeplace",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L110",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_removeallsaved",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L124",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_fetchitineraries",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L133",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_createitinerary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L157",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_fetchitineraryitems",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L166",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_generateitinerary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L180",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_removeitineraryitem",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L197",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_category_badge_classes",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L211",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_categorybadge",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L223",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_searchresultslistprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L231",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_searchresultslist",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L300",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_chatpanelprops",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L308",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_chatpanel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L381",
+      "weight": 1.0,
+      "source": "components_ui_explorer_search_panel_tsx",
+      "target": "explorer_search_panel_searchpanel",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L151",
+      "weight": 1.0,
+      "source": "generate_POST",
+      "target": "generate_requireUserId"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L220",
+      "weight": 1.0,
+      "source": "generate_POST",
+      "target": "generate_assignDays"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L222",
+      "weight": 1.0,
+      "source": "generate_POST",
+      "target": "generate_sampleInOrder"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L222",
+      "weight": 1.0,
+      "source": "generate_POST",
+      "target": "generate_orderWithinDay"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L268",
+      "weight": 1.0,
+      "source": "generate_POST",
+      "target": "generate_itemsCacheKey"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L205-L214",
+      "weight": 1.0,
+      "source": "generate_eligible_preshuffle",
+      "target": "generate_POST"
+    },
+    {
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L1137-L1141 (GenerateBody: mode/perDay/shuffle/placeIds)",
+      "weight": 1.0,
+      "source": "search_panel_generateItinerary",
+      "target": "generate_POST"
+    },
+    {
+      "relation": "shares_data_with",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L73 (generate effect carries perDay/shuffle matching GenerateBody)",
+      "weight": 1.0,
+      "source": "search_panel_ChatSideEffect",
+      "target": "generate_POST"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Itinerary Generation Algorithm",
+      "weight": 1.0,
+      "source": "claude_md_itinerary_generation_algorithm",
+      "target": "generate_POST"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L83-L91",
+      "weight": 1.0,
+      "source": "generate_angle_sweep_clustering",
+      "target": "generate_assignDays"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L76-L81",
+      "weight": 1.0,
+      "source": "generate_random_sweep_rotation",
+      "target": "generate_assignDays"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Itinerary Generation Algorithm, step 4",
+      "weight": 1.0,
+      "source": "claude_md_itinerary_generation_algorithm",
+      "target": "generate_assignDays"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L137",
+      "weight": 1.0,
+      "source": "generate_orderWithinDay",
+      "target": "generate_dist2"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L126-L127",
+      "weight": 1.0,
+      "source": "generate_random_nn_start",
+      "target": "generate_orderWithinDay"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Itinerary Generation Algorithm, step 6",
+      "weight": 1.0,
+      "source": "claude_md_itinerary_generation_algorithm",
+      "target": "generate_orderWithinDay"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": "L40-L41",
+      "weight": 1.0,
+      "source": "generate_random_trim_in_order",
+      "target": "generate_sampleInOrder"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Itinerary Generation Algorithm, step 5 (perDay trim)",
+      "weight": 1.0,
+      "source": "claude_md_itinerary_generation_algorithm",
+      "target": "generate_sampleInOrder"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Itinerary Generation Algorithm, step 6",
+      "weight": 1.0,
+      "source": "claude_md_itinerary_generation_algorithm",
+      "target": "generate_dist2"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Itinerary Generation Algorithm, step 4 (contiguous arcs)",
+      "weight": 1.0,
+      "source": "claude_md_itinerary_generation_algorithm",
+      "target": "generate_angle_sweep_clustering"
+    },
+    {
+      "relation": "semantically_similar_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.85,
+      "source_file": "app/api/itineraries/[id]/generate/route.ts",
+      "source_location": null,
+      "weight": 1.0,
+      "source": "generate_random_sweep_rotation",
+      "target": "generate_random_nn_start"
+    },
+    {
+      "relation": "conceptually_related_to",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Itinerary Generation Algorithm, step 5 (shared rationale: trim after assignment preserves clusters)",
+      "weight": 1.0,
+      "source": "claude_md_itinerary_generation_algorithm",
+      "target": "generate_random_trim_in_order"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L820-L826",
+      "weight": 1.0,
+      "source": "search_panel_SearchPanel",
+      "target": "search_panel_SearchResultsList"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L842-L848",
+      "weight": 1.0,
+      "source": "search_panel_SearchPanel",
+      "target": "search_panel_ChatPanel"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L952",
+      "weight": 1.0,
+      "source": "search_panel_SearchPanel",
+      "target": "search_panel_CategoryBadge"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L1137, L1169",
+      "weight": 1.0,
+      "source": "search_panel_SearchPanel",
+      "target": "search_panel_generateItinerary"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L576",
+      "weight": 1.0,
+      "source": "search_panel_SearchPanel",
+      "target": "search_panel_fetchSaved"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L500, L1075",
+      "weight": 1.0,
+      "source": "search_panel_SearchPanel",
+      "target": "search_panel_fetchItineraries"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L538, L1143, L1176",
+      "weight": 1.0,
+      "source": "search_panel_SearchPanel",
+      "target": "search_panel_fetchItineraryItems"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L1073",
+      "weight": 1.0,
+      "source": "search_panel_SearchPanel",
+      "target": "search_panel_createItinerary"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L995",
+      "weight": 1.0,
+      "source": "search_panel_SearchPanel",
+      "target": "search_panel_handleSavedDividerMouseDown"
+    },
+    {
+      "relation": "calls",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L362, L370, L847",
+      "weight": 1.0,
+      "source": "search_panel_ChatPanel",
+      "target": "search_panel_handleChatSend"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L266",
+      "weight": 1.0,
+      "source": "search_panel_SearchResultsList",
+      "target": "search_panel_CategoryBadge"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L717",
+      "weight": 1.0,
+      "source": "search_panel_handleChatSend",
+      "target": "search_panel_generateItinerary"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L712",
+      "weight": 1.0,
+      "source": "search_panel_handleChatSend",
+      "target": "search_panel_fetchItineraries"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L725",
+      "weight": 1.0,
+      "source": "search_panel_handleChatSend",
+      "target": "search_panel_fetchItineraryItems"
+    },
+    {
+      "relation": "calls",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L710",
+      "weight": 1.0,
+      "source": "search_panel_handleChatSend",
+      "target": "search_panel_performSearch"
+    },
+    {
+      "relation": "shares_data_with",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "components/ui/explorer/search-panel.tsx",
+      "source_location": "L704-L732",
+      "weight": 1.0,
+      "source": "search_panel_handleChatSend",
+      "target": "search_panel_ChatSideEffect"
+    },
+    {
+      "relation": "references",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Chat Assistant ('Generation failed: <msg>' client behavior)",
+      "weight": 1.0,
+      "source": "claude_md_chat_side_effect_contract",
+      "target": "search_panel_handleChatSend"
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "Changelog 2026-05-26 (lastY / currentHeight / actualDelta)",
+      "weight": 1.0,
+      "source": "claude_md_drag_reanchor_pattern",
+      "target": "search_panel_handleSavedDividerMouseDown"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "CLAUDE.md",
+      "source_location": "Architecture > Chat Assistant > Side-effect contract",
+      "weight": 1.0,
+      "source": "claude_md_chat_side_effect_contract",
+      "target": "search_panel_ChatSideEffect"
     }
   ],
   "hyperedges": [
     {
-      "id": "hyper_chat_tools",
-      "label": "Chat route exposes Gemini function-calling tools",
+      "id": "shuffle_randomness_flow",
+      "label": "Shuffle-aware randomness pipeline (rotation + in-order trim + random NN start)",
       "nodes": [
-        "api_chat_route",
-        "tool_search_city",
-        "tool_create_itinerary",
-        "tool_generate_itinerary",
-        "ext_gemini_model"
+        "generate_POST",
+        "generate_assignDays",
+        "generate_sampleInOrder",
+        "generate_orderWithinDay",
+        "generate_eligible_preshuffle"
       ],
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "app/api/chat/route.ts"
-    },
-    {
-      "id": "hyper_auth_flow",
-      "label": "Auth flow: route -> authOptions -> Prisma adapter",
-      "nodes": [
-        "api_auth_nextauth_route",
-        "lib_auth_authoptions",
-        "ext_auth_prisma_adapter",
-        "lib_db_prisma"
-      ],
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/auth.ts"
-    },
-    {
-      "id": "hyper_itinerary_pipeline",
-      "label": "Itinerary generation reads SavedPlace + Place, writes ItineraryItem",
-      "nodes": [
-        "api_itineraries_generate_route",
-        "prisma_model_savedPlace",
-        "prisma_model_place",
-        "prisma_model_itinerary",
-        "prisma_model_itineraryItem"
-      ],
-      "relation": "shares_data_with",
+      "relation": "participate_in",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "app/api/itineraries/[id]/generate/route.ts"
     },
     {
-      "id": "hyper_search_panel_saved_section_resize",
-      "label": "Saved section resize feature (state + drag handler + rationale)",
+      "id": "chat_side_effect_flow",
+      "label": "Chat side-effect generate flow (LLM effect -> client apply -> generate route)",
       "nodes": [
-        "search_panel_saved_height_state",
-        "search_panel_drag_handler",
-        "claudemd_drag_reanchor"
+        "search_panel_handleChatSend",
+        "search_panel_ChatSideEffect",
+        "search_panel_generateItinerary",
+        "generate_POST",
+        "claude_md_chat_side_effect_contract"
       ],
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "components/ui/explorer/search-panel.tsx",
-      "weight": 1.0
-    },
-    {
-      "id": "hyper_auth_db_models",
-      "label": "NextAuth database models (User/Account/Session/VerificationToken)",
-      "nodes": [
-        "db_table_user",
-        "db_table_account",
-        "db_table_session",
-        "db_table_verification_token"
-      ],
-      "relation": "conceptually_related_to",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "prisma/migrations/20251228175240_auth/migration.sql",
-      "weight": 1.0
-    },
-    {
-      "id": "hyper_itinerary_generation_flow",
-      "label": "Itinerary generation flow (algorithm + client helper + tables)",
-      "nodes": [
-        "claudemd_itinerary_algorithm",
-        "search_panel_generate_itinerary",
-        "db_table_itinerary",
-        "db_table_itinerary_item",
-        "db_table_saved_place"
-      ],
-      "relation": "shares_data_with",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "CLAUDE.md",
-      "weight": 1.0
+      "relation": "participate_in",
+      "confidence": "INFERRED",
+      "confidence_score": 0.95,
+      "source_file": "components/ui/explorer/search-panel.tsx"
     }
   ],
-  "built_at_commit": "3ffc289151363948dc3615c4ea217d729d88d601"
+  "built_at_commit": "9d5729a602611f645d30715573badf4648b68120"
 }

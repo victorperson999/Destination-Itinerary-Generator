@@ -73,7 +73,7 @@ All routes under `app/api/` use `export const runtime = "nodejs"` and require au
 3. (Optional) shuffles the eligible list when `shuffle: true`. This alone does not change the output (the angle sweep re-sorts); it only randomizes angle-sort ties. Real shuffle variation comes from steps 4–6.
 4. Distributes eligible places across days (`assignDays`):
    - If ≥2 places have coords: sort by polar angle around the centroid (geographic sweep); when `shuffle: true`, rotate the sorted list by a random offset (sweep starts at a random angle, so arc boundaries move per run); then chunk into **contiguous arcs** across days (Day 0 = first arc, Day 1 = next arc, …) so each day clusters geographically. Computed via `Math.floor((i * daysCount) / sorted.length)`.
-   - Otherwise: sort by category then name, round-robin across days.
+   - Otherwise: sort by category then name (skipped when `shuffle: true` — the pre-shuffled input order is kept), round-robin across days.
 5. Trims each day's bucket to at most `perDay` places (`sampleInOrder`): without shuffle, keeps the first `perDay`; with shuffle, keeps a random subset preserving angle order. The cap is applied **after** day assignment to preserve spatial clusters (a global pre-trim would just drop the tail in `createdAt` order).
 6. Orders places within each day using nearest-neighbour greedy on squared Euclidean distance (`dist2`), starting from a random stop when `shuffle: true`; short days (≤2 places) skip the greedy pass.
 7. Body params: `mode` (`"replace"` | `"append"`), `perDay` (1–8, default 3), `shuffle` (bool), `placeIds` (optional string array). Response includes a `debug` block with `savedCount`, `eligibleCount`, `chosenCount` (post-trim total), `selectedCount`, `mode`, `perDay`, `shuffle`.
@@ -114,6 +114,17 @@ All protected API routes call `getServerSession(authOptions)` and extract `(sess
 - `components/ui/` — shadcn/ui primitives (Badge, Button, Card, Input, Separator)
 
 ## Changelog
+
+### 2026-06-09 — Fix: shuffle option had no effect on generation
+- **`app/api/itineraries/[id]/generate/route.ts`** —
+  - Root cause: the `shuffle` pre-shuffle of `eligible` was immediately erased by `assignDays`' deterministic polar-angle sort, so shuffled and unshuffled runs produced byte-identical itineraries. Client was sending the flag correctly.
+  - `assignDays` now takes a `shuffle` param; after the angle sort it rotates the list by a random offset so the sweep starts at a random angle — arc boundaries (and thus day assignments) differ per run while each day stays a contiguous geographic slice.
+  - Added `sampleInOrder(arr, k, shuffle)` helper for the `perDay` trim: with shuffle, keeps a random subset of an oversized day bucket (preserving angle order) instead of always the first `perDay`.
+  - `orderWithinDay` now takes a `shuffle` param and starts the nearest-neighbour walk at a random stop instead of always `pts[0]`.
+  - No-coords fallback branch: when `shuffle: true`, skips the category/name sort and keeps the pre-shuffled input order.
+  - Kept the original `eligible` pre-shuffle (now only breaks angle-sort ties for co-located places) with a comment explaining it isn't the variation mechanism.
+  - `shuffle: false` paths are unchanged — unshuffled generation remains deterministic.
+- **`CLAUDE.md`** — Updated Itinerary Generation Algorithm steps 3–6 to document the rotation, randomized trim, random path start, and fallback-sort skip.
 
 ### 2026-05-26 — Chat panel polish + resizable Saved section
 - **`components/ui/explorer/search-panel.tsx`** —
