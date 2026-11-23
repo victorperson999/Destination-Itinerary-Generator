@@ -80,9 +80,9 @@
     "semantic_hash": "e7407c117032973224ed7b2497e7c325"
   },
   "C:\\Users\\victo\\local-explorer-itinerary\\app\\api\\itineraries\\[id]\\generate\\route.ts": {
-    "mtime": 1778031734.9125228,
-    "ast_hash": "78a68616a7a4d34f28d7b658c62c3e35",
-    "semantic_hash": "78a68616a7a4d34f28d7b658c62c3e35"
+    "mtime": 1781038624.614075,
+    "ast_hash": "5b356ba985fe3f576c4c1fa8258cda56",
+    "semantic_hash": "5b356ba985fe3f576c4c1fa8258cda56"
   },
   "C:\\Users\\victo\\local-explorer-itinerary\\app\\api\\itineraries\\[id]\\items\\route.ts": {
     "mtime": 1771968340.5502942,
@@ -135,9 +135,9 @@
     "semantic_hash": "981488d95a2e21d07ed8acfd3963d7e9"
   },
   "C:\\Users\\victo\\local-explorer-itinerary\\components\\ui\\explorer\\search-panel.tsx": {
-    "mtime": 1779843692.201753,
-    "ast_hash": "c570ad58cf8f1b9a78eeee35eb6158f9",
-    "semantic_hash": "c570ad58cf8f1b9a78eeee35eb6158f9"
+    "mtime": 1779846456.411118,
+    "ast_hash": "4b06322e9a2b51db28de841d0713887a",
+    "semantic_hash": "4b06322e9a2b51db28de841d0713887a"
   },
   "C:\\Users\\victo\\local-explorer-itinerary\\lib\\auth.ts": {
     "mtime": 1767552131.454854,
@@ -195,9 +195,9 @@
     "semantic_hash": "09bedc0bc40d63f9276658b897517076"
   },
   "C:\\Users\\victo\\local-explorer-itinerary\\CLAUDE.md": {
-    "mtime": 1779844145.4540806,
-    "ast_hash": "2ba6dac98b460ddd086e8032bb46b260",
-    "semantic_hash": "2ba6dac98b460ddd086e8032bb46b260"
+    "mtime": 1781053351.807284,
+    "ast_hash": "fa10e9cd07aeb0a6d8e4e869152254c0",
+    "semantic_hash": "fa10e9cd07aeb0a6d8e4e869152254c0"
   },
   "C:\\Users\\victo\\local-explorer-itinerary\\docker-compose.yml": {
     "mtime": 1767552131.4535239,

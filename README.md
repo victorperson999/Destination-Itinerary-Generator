@@ -9,7 +9,7 @@ A web app for discovering local points of interest and building day-by-day trave
 1. **Search** — enter a city or neighbourhood name to pull nearby points of interest via Nominatim (geocoding) and OpenTripMap.
 2. **Save** — bookmark places to your personal saved list, select specific subsets, and resize the saved panel.
 3. **Plan** — create named itineraries (e.g. "Tokyo Trip, 5 days") and manage stops across days.
-4. **Auto-generate** — cluster saved (or selected) places geographically into contiguous day arcs and build a per-day route using cosine-latitude-adjusted nearest-neighbour ordering, with optional shuffling.
+4. **Auto-generate** — cluster saved (or selected) places geographically into contiguous day arcs and build a per-day route using cosine-latitude-adjusted nearest-neighbour ordering refined with open-path 2-opt local search, with optional shuffling.
 5. **AI assistant** — a collapsible chat panel powered by Google Gemini 2.5 Flash Lite can search destinations, create itineraries, and trigger schedule generation via structured function calling.
 
 ---
@@ -145,6 +145,7 @@ components/
 lib/
   auth.ts                       ← NextAuth config (GitHub provider + Prisma adapter)
   db.ts                         ← Prisma client singleton
+  itinerary-routing.ts          ← Geographic clustering, nearest-neighbour, & 2-opt path optimizer
   redis.ts                      ← Optional Redis client (2s connect timeout, graceful fallback)
 types/
   next-auth.d.ts                ← NextAuth Session user.id type augmentation
@@ -157,7 +158,7 @@ prisma/
 ## Key Design Notes
 
 - **Two-level caching.** OpenTripMap POI queries are cached in PostgreSQL (`PlacesQueryCache`) for 6 hours. Per-user reads (`/api/saved`, `/api/itineraries`, `/api/itineraries/[id]/items`) are optionally cached in Redis (60s–5min TTL) and invalidated on writes; if Redis is unset or unreachable, requests fall back cleanly to Postgres.
-- **Geographic itinerary generation.** Places with coordinates are sorted by polar angle around their centroid (with `cos(lat)` scaling) and sliced into contiguous geographic arcs per day, trimmed to `perDay`, then ordered within each day via nearest-neighbour search. Enabling `shuffle` rotates the sweep start angle, samples oversized day buckets randomly while preserving arc order, and randomizes each day's starting stop.
+- **Geographic itinerary generation.** Places with coordinates are sorted by polar angle around their centroid (with `cos(lat)` scaling) and sliced into contiguous geographic arcs per day, trimmed to `perDay`, then ordered within each day via nearest-neighbour search refined with open-path 2-opt local search (true Euclidean `cos(lat)`-scaled distance). Enabling `shuffle` rotates the sweep start angle, samples oversized day buckets randomly while preserving arc order, and randomizes path starting/direction variation without introducing backtracking.
 - **AI chat side-effect contract.** `/api/chat` does not mutate client state directly — Gemini invokes `search_city`, `create_itinerary`, and `generate_itinerary`, and the endpoint returns a `sideEffects[]` array that the client executes against the UI and APIs.
 - **Single-page workspace.** Search, saved places, itinerary planning, and the AI assistant share state inside `SearchPanel` so actions in one panel (or from the chat assistant) update the rest of the workspace immediately.
 
