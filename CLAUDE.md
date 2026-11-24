@@ -105,12 +105,15 @@ Key models:
 All protected API routes call `getServerSession(authOptions)` and extract `(session.user as any).id`. The `id` is injected in `lib/auth.ts` via the `session` callback. Auth provider: GitHub only.
 
 ### UI Component Structure
-- `app/page.tsx` — renders `<SearchPanel />`
+- `app/page.tsx` — SSR pre-loads user profile, saved places, itineraries, and active itinerary items into `<SearchPanel />`
 - `app/providers.tsx` — wraps app in `<SessionProvider>`
-- `app/layout.tsx` — root layout (not listed, but implied)
-- `components/ui/explorer/search-panel.tsx` — all application state and UI
-- `components/auth-button.tsx` — sign in/out button
-- `components/theme-toggle.tsx` — light/dark theme switch; toggles the `.dark` class on `<html>` and persists to `localStorage` (no `next-themes` dependency)
+- `app/layout.tsx` — root layout + no-flash theme boot script
+- `components/ui/explorer/search-panel.tsx` — workspace orchestrator & client state
+- `components/ui/explorer/app-sidebar.tsx` — collapsible left sidebar + mobile navigation drawer
+- `components/ui/explorer/account-dock.tsx` — bottom-left GitHub avatar, sign-in dock, and floating account menu
+- `components/ui/explorer/settings-dialog.tsx` — Preferences (appearance, default trip length/stops) & Help/Shortcuts modal
+- `components/ui/explorer/{search-section,saved-section,itinerary-section,chat-panel,category-badge,types}.tsx` — modular workspace sections
+- `components/theme-toggle.tsx` — light/dark theme switch backed by shared `lib/theme.ts` (`useSyncExternalStore`, no `next-themes` dependency)
 - `components/ui/` — shadcn/ui primitives (Badge, Button, Card, Input, Separator)
 
 ## Changelog

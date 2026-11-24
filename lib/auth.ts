@@ -9,6 +9,9 @@ export const authOptions: NextAuthOptions = {
     GitHubProvider({
       clientId: process.env.GITHUB_ID!,
       clientSecret: process.env.GITHUB_SECRET!,
+      // GitHub now returns `iss=https://github.com/login/oauth` (RFC 9207) on OAuth callbacks;
+      // next-auth v4's openid-client requires `issuer` to be set when `iss` is present.
+      issuer: "https://github.com/login/oauth",
     }),
   ],
   session: { strategy: "database" },

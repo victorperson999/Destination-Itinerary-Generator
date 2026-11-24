@@ -27,6 +27,14 @@ export default async function Home({ searchParams }: HomeProps) {
 
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
+  const initialUser = userId
+    ? {
+        id: userId,
+        name: session?.user?.name ?? null,
+        email: session?.user?.email ?? null,
+        image: session?.user?.image ?? null,
+      }
+    : null;
 
   let initialSaved: SavedItem[] = [];
   let initialItineraries: Itinerary[] = [];
@@ -99,17 +107,16 @@ export default async function Home({ searchParams }: HomeProps) {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-accent/30 via-background to-background px-4 py-10">
-      <div className="mx-auto w-full max-w-5xl">
-        <SearchPanel
-          initialUserId={userId ?? null}
-          initialSaved={initialSaved}
-          initialItineraries={initialItineraries}
-          initialItineraryId={initialItineraryId}
-          initialItineraryItems={initialItineraryItems}
-          initialQuery={initialQuery}
-        />
-      </div>
-    </main>
+    <div className="min-h-screen bg-gradient-to-b from-accent/30 via-background to-background">
+      <SearchPanel
+        initialUserId={userId ?? null}
+        initialUser={initialUser}
+        initialSaved={initialSaved}
+        initialItineraries={initialItineraries}
+        initialItineraryId={initialItineraryId}
+        initialItineraryItems={initialItineraryItems}
+        initialQuery={initialQuery}
+      />
+    </div>
   );
 }
