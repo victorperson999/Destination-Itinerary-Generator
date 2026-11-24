@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AccountDock } from "./account-dock";
 import { BrandLogo } from "./brand-logo";
-import type { Itinerary, SettingsDialogTab, SidebarUser } from "./types";
+import { TripSortMenu } from "./trip-sort-menu";
+import type { Itinerary, SettingsDialogTab, SidebarUser, TripSortOption } from "./types";
 
 type SectionId = "discover" | "saved" | "itinerary";
 type SidebarSurface = "desktop" | "mobile";
@@ -26,6 +27,7 @@ type AppSidebarProps = {
   user: SidebarUser | null;
   itineraries: Itinerary[];
   itineraryId: string | null;
+  tripSort: TripSortOption;
   savedCount: number;
   itineraryItemCount: number | null;
   deletingItinId: string | null;
@@ -39,6 +41,7 @@ type AppSidebarProps = {
   onDismissSidebarError: () => void;
   onNavigateSection: (section: SectionId) => void;
   onSelectItinerary: (id: string) => void;
+  onTripSortChange: (next: TripSortOption) => void;
   onNewTrip: () => void;
   onDeleteItinerary: (id: string) => Promise<void>;
   onOpenSettings: (tab: SettingsDialogTab, fromMobile: boolean) => void;
@@ -52,6 +55,7 @@ type SidebarBodyProps = {
   user: SidebarUser | null;
   itineraries: Itinerary[];
   itineraryId: string | null;
+  tripSort: TripSortOption;
   savedCount: number;
   itineraryItemCount: number | null;
   deletingItinId: string | null;
@@ -67,6 +71,7 @@ type SidebarBodyProps = {
   onDismissSidebarError: () => void;
   onNavigateSection: (section: SectionId) => void;
   onSelectItinerary: (id: string) => void;
+  onTripSortChange: (next: TripSortOption) => void;
   onNewTrip: () => void;
   onStartDeleteConfirm: (id: string, surface: SidebarSurface) => void;
   onCancelDeleteConfirm: (options?: { restoreFocus?: boolean }) => void;
@@ -84,6 +89,7 @@ function SidebarBody({
   user,
   itineraries,
   itineraryId,
+  tripSort,
   savedCount,
   itineraryItemCount,
   deletingItinId,
@@ -99,6 +105,7 @@ function SidebarBody({
   onDismissSidebarError,
   onNavigateSection,
   onSelectItinerary,
+  onTripSortChange,
   onNewTrip,
   onStartDeleteConfirm,
   onCancelDeleteConfirm,
@@ -249,17 +256,28 @@ function SidebarBody({
               Trips
             </span>
             {authed ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                className="h-6 w-6 text-muted-foreground hover:text-sidebar-foreground"
-                onClick={onNewTrip}
-                aria-label="New trip"
-                title="New trip"
-              >
-                <Plus size={14} strokeWidth={1.5} />
-              </Button>
+              <div className="flex items-center gap-0.5">
+                <TripSortMenu
+                  value={tripSort}
+                  isMobile={isMobile}
+                  mobileOpen={mobileOpen}
+                  settingsOpen={settingsOpen}
+                  hasPendingDelete={confirmingDeleteId !== null}
+                  onBeforeExplicitOpen={() => onCancelDeleteConfirm({ restoreFocus: false })}
+                  onChange={onTripSortChange}
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="h-6 w-6 text-muted-foreground hover:text-sidebar-foreground"
+                  onClick={onNewTrip}
+                  aria-label="New trip"
+                  title="New trip"
+                >
+                  <Plus size={14} strokeWidth={1.5} />
+                </Button>
+              </div>
             ) : null}
           </div>
 
@@ -411,6 +429,7 @@ export function AppSidebar({
   user,
   itineraries,
   itineraryId,
+  tripSort,
   savedCount,
   itineraryItemCount,
   deletingItinId,
@@ -424,6 +443,7 @@ export function AppSidebar({
   onDismissSidebarError,
   onNavigateSection,
   onSelectItinerary,
+  onTripSortChange,
   onNewTrip,
   onDeleteItinerary,
   onOpenSettings,
@@ -536,6 +556,7 @@ export function AppSidebar({
     user,
     itineraries,
     itineraryId,
+    tripSort,
     savedCount,
     itineraryItemCount,
     deletingItinId,
@@ -548,6 +569,7 @@ export function AppSidebar({
     onDismissSidebarError,
     onNavigateSection,
     onSelectItinerary,
+    onTripSortChange,
     onNewTrip,
     onStartDeleteConfirm: startDeleteConfirm,
     onCancelDeleteConfirm: cancelDeleteConfirm,

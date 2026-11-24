@@ -64,9 +64,12 @@ export type SidebarUser = {
   image: string | null;
 };
 
+export type TripSortOption = "newest" | "oldest" | "alpha-asc" | "alpha-desc";
+
 export type UserPreferences = {
   defaultDays: number;
   defaultPerDay: number;
+  tripSort: TripSortOption;
 };
 
 export type SettingsDialogTab = "preferences" | "help";
