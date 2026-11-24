@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { UserPreferences } from "@/components/ui/explorer/types";
+import { isTripSortOption } from "@/lib/itinerary-sort";
 
 const PREFS_STORAGE_KEY = "local-explorer:preferences";
 const PREFS_CHANGE_EVENT = "local-explorer:preferences-change";
@@ -9,6 +10,7 @@ const PREFS_CHANGE_EVENT = "local-explorer:preferences-change";
 export const DEFAULT_USER_PREFERENCES: UserPreferences = {
   defaultDays: 3,
   defaultPerDay: 3,
+  tripSort: "newest",
 };
 
 let cachedRaw: string | null | undefined;
@@ -32,6 +34,9 @@ function parsePreferences(raw: string | null): UserPreferences {
     return {
       defaultDays: clampInt(parsed.defaultDays, 1, 14, DEFAULT_USER_PREFERENCES.defaultDays),
       defaultPerDay: clampInt(parsed.defaultPerDay, 1, 8, DEFAULT_USER_PREFERENCES.defaultPerDay),
+      tripSort: isTripSortOption(parsed.tripSort)
+        ? parsed.tripSort
+        : DEFAULT_USER_PREFERENCES.tripSort,
     };
   } catch {
     return DEFAULT_USER_PREFERENCES;
@@ -84,6 +89,10 @@ export function updateUserPreferences(patch: Partial<UserPreferences>): UserPref
       patch.defaultPerDay !== undefined
         ? clampInt(patch.defaultPerDay, 1, 8, current.defaultPerDay)
         : current.defaultPerDay,
+    tripSort:
+      patch.tripSort !== undefined && isTripSortOption(patch.tripSort)
+        ? patch.tripSort
+        : current.tripSort,
   };
   const serialized = JSON.stringify(next);
   cachedRaw = serialized;

@@ -5,6 +5,7 @@ import { useSession, signIn } from "next-auth/react";
 import { PanelLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { sortItineraries } from "@/lib/itinerary-sort";
 import { updateUserPreferences, useUserPreferences } from "@/lib/preferences";
 import { AppSidebar } from "./app-sidebar";
 import { BrandLogo } from "./brand-logo";
@@ -276,6 +277,7 @@ export default function SearchPanel({
   const activeUserIdRef = useRef<string | null>(initialUserId);
   const itinerariesRef = useRef<Itinerary[]>(initialItineraries);
   const itineraryIdRef = useRef<string | null>(initialItineraryId);
+  const tripSortRef = useRef(preferences.tripSort);
   const searchAbortRef = useRef<AbortController | null>(null);
   const newItinErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedLoadedUserIdRef = useRef<string | null>(initialUserId);
@@ -341,6 +343,10 @@ export default function SearchPanel({
   useEffect(() => {
     itineraryIdRef.current = itineraryId;
   }, [itineraryId]);
+
+  useEffect(() => {
+    tripSortRef.current = preferences.tripSort;
+  }, [preferences.tripSort]);
 
   useEffect(() => {
     const wasOpen = prevMobileSidebarOpenRef.current;
@@ -486,6 +492,11 @@ export default function SearchPanel({
   const savedKeys = useMemo(
     () => new Set(saved.map((s) => `${s.provider}:${s.providerId}`)),
     [saved]
+  );
+
+  const sortedItineraries = useMemo(
+    () => sortItineraries(itineraries, preferences.tripSort),
+    [itineraries, preferences.tripSort]
   );
 
   const selectedItinerary = useMemo(
@@ -852,7 +863,7 @@ export default function SearchPanel({
       }
 
       if (itineraryIdRef.current === id) {
-        const nextId = nextList[0]?.id ?? null;
+        const nextId = sortItineraries(nextList, tripSortRef.current)[0]?.id ?? null;
         itemsFetchReqIdRef.current++;
         itineraryIdRef.current = nextId;
         setItineraryId(nextId);
@@ -1086,8 +1097,9 @@ export default function SearchPanel({
           authed={authed}
           authLoading={status === "loading"}
           user={activeUser}
-          itineraries={itineraries}
+          itineraries={sortedItineraries}
           itineraryId={itineraryId}
+          tripSort={preferences.tripSort}
           savedCount={saved.length}
           itineraryItemCount={syncedItemCount}
           deletingItinId={deletingItinId}
@@ -1104,6 +1116,9 @@ export default function SearchPanel({
             setSidebarError(null);
             itineraryIdRef.current = id;
             setItineraryId(id);
+          }}
+          onTripSortChange={(tripSort) => {
+            updateUserPreferences({ tripSort });
           }}
           onNewTrip={handleNewTrip}
           onDeleteItinerary={handleDeleteItinerary}
@@ -1261,7 +1276,7 @@ export default function SearchPanel({
 
             <ItinerarySection
               authed={authed}
-              itineraries={itineraries}
+              itineraries={sortedItineraries}
               itineraryId={itineraryId}
               selectedItinerary={selectedItinerary}
               itineraryItems={itineraryItems}
