@@ -1,86 +1,30 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-
 import { useSession, signIn } from "next-auth/react";
-import AuthButton from "@/components/auth-button";
+import { MapPin, PanelLeft, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import ThemeToggle from "@/components/theme-toggle";
-import { ChevronLeft, ChevronRight, MapPin, Bookmark, CalendarDays } from "lucide-react";
+import { updateUserPreferences, useUserPreferences } from "@/lib/preferences";
+import { AppSidebar } from "./app-sidebar";
+import { SettingsDialog } from "./settings-dialog";
+import { SearchSection } from "./search-section";
+import { SavedSection } from "./saved-section";
+import { ItinerarySection } from "./itinerary-section";
+import { ChatPanel } from "./chat-panel";
+import type {
+  ChatMessage,
+  ChatSideEffect,
+  Itinerary,
+  ItineraryItem,
+  PlaceResult,
+  SavedItem,
+  SearchPanelProps,
+  SettingsDialogTab,
+  SidebarUser,
+} from "./types";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-
-export type SavedItem = {
-  placeId: string;
-  provider: string;
-  providerId: string;
-  name: string;
-  address: string | null;
-  category: string | null;
-  lat: number | null;
-  lon: number | null;
-};
-
-export type Itinerary = {
-  id: string;
-  title: string;
-  daysCount: number;
-  startDate: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type ItineraryItem = {
-  id: string;
-  itineraryId: string;
-  placeId: string;
-  dayIndex: number;
-  order: number;
-  note: string | null;
-  createdAt: string;
-  place: {
-    id: string;
-    name: string;
-    address: string | null;
-    category: string | null;
-    lat: number | null;
-    lon: number | null;
-  };
-};
-
-export type SearchPanelProps = {
-  initialUserId?: string | null;
-  initialSaved?: SavedItem[];
-  initialItineraries?: Itinerary[];
-  initialItineraryId?: string | null;
-  initialItineraryItems?: ItineraryItem[];
-  initialQuery?: string;
-};
-
-type PlaceResult = {
-  provider: "mock" | "osm";
-  providerId: string;
-  name: string;
-  address: string;
-  category?: string;
-  lat?: number;
-  lon?: number;
-};
-
-type ChatMessage = {
-  role: "user" | "assistant";
-  content: string;
-  isError?: boolean;
-};
-
-type ChatSideEffect =
-  | { type: "search"; query: string }
-  | { type: "refresh_itineraries"; selectId?: string }
-  | { type: "generate"; itineraryId: string; perDay: number; shuffle: boolean; useSelected: boolean };
+export type { SavedItem, Itinerary, ItineraryItem, SearchPanelProps } from "./types";
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 
@@ -176,6 +120,18 @@ async function createItinerary(title: string, daysCount: number): Promise<Itiner
   return (await res.json()) as Itinerary;
 }
 
+async function deleteItineraryApi(id: string): Promise<void> {
+  const res = await fetch(`/api/itineraries/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    cache: "no-store",
+  });
+  if (res.status === 404) return;
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Failed to delete itinerary: ${res.status} ${res.statusText} ${text.slice(0, 200)}`);
+  }
+}
+
 async function fetchItineraryItems(id: string): Promise<ItineraryItem[]> {
   const res = await fetch(`/api/itineraries/${encodeURIComponent(id)}/items`, { cache: "no-store" });
   if (!res.ok) {
@@ -202,204 +158,11 @@ async function generateItinerary(
   return (await res.json()) as { ok: boolean; count: number; items: ItineraryItem[] };
 }
 
-// ── CategoryBadge ─────────────────────────────────────────────────────────────
-
-// Full literal class strings (light + dark) so Tailwind's scanner includes them.
-const CATEGORY_BADGE_CLASSES: Record<string, string> = {
-  museums: "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-900",
-  historic: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900",
-  architecture: "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-900",
-  cultural: "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-900",
-  natural: "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900",
-  amusements: "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-900",
-  religion: "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-900",
-  foods: "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-900",
-};
-
-const CATEGORY_FALLBACK_CLASS =
-  "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
-
-function CategoryBadge({ category, className }: { category?: string | null; className?: string }) {
-  if (!category) return null;
-  const colors = CATEGORY_BADGE_CLASSES[category.toLowerCase()] ?? CATEGORY_FALLBACK_CLASS;
-  return (
-    <Badge variant="outline" className={[colors, className].filter(Boolean).join(" ")}>
-      {category}
-    </Badge>
-  );
-}
-
-// ── SearchResultsList ─────────────────────────────────────────────────────────
-
-type SearchResultsListProps = {
-  results: PlaceResult[];
-  savedKeys: Set<string>;
-  savingKey: string | null;
-  query: string;
-  onSave: (r: PlaceResult) => Promise<void>;
-};
-
-function SearchResultsList({ results, savedKeys, savingKey, query, onSave }: SearchResultsListProps) {
-  const [pagination, setPagination] = useState<{ forResults: PlaceResult[]; count: number }>({
-    forResults: results,
-    count: 10,
-  });
-  const visibleCount = pagination.forResults === results ? pagination.count : 10;
-
-  if (results.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        Search for a city to see its nearby attractions.
-      </p>
-    );
-  }
-
-  const visible = results.slice(0, visibleCount);
-  const hasMore = visibleCount < results.length;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-sm text-muted-foreground">
-        Showing {visible.length} of {results.length} for{" "}
-        <span className="font-medium">{query.trim()}</span>
-      </p>
-
-      <div className="max-h-96 overflow-y-auto rounded-lg border">
-        <ul className="divide-y">
-          {visible.map((r) => {
-            const key = `${r.provider}:${r.providerId}`;
-            const isSaved = savedKeys.has(key);
-            return (
-              <li key={r.providerId} className="p-3 transition-colors hover:bg-accent/30">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium">{r.name}</p>
-                    <p className="text-sm text-muted-foreground">{r.address}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <CategoryBadge category={r.category} />
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={isSaved ? "secondary" : "default"}
-                      disabled={isSaved || savingKey === key}
-                      onClick={() => void onSave(r)}
-                    >
-                      {isSaved ? "Saved" : "Save"}
-                    </Button>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-
-      {hasMore && (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="w-full"
-          onClick={() =>
-            setPagination((p) => ({
-              forResults: results,
-              count: (p.forResults === results ? p.count : 10) + 10,
-            }))
-          }
-        >
-          Show more results ({results.length - visibleCount} remaining)
-        </Button>
-      )}
-    </div>
-  );
-}
-
-// ── ChatPanel ────────────────────────────────────────────────────────────────
-
-type ChatPanelProps = {
-  messages: ChatMessage[];
-  input: string;
-  loading: boolean;
-  onInputChange: (value: string) => void;
-  onSend: () => void;
-};
-
-function ChatPanel({ messages, input, loading, onInputChange, onSend }: ChatPanelProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  return (
-    <div className="flex h-full flex-col">
-      <p className="mb-2 text-sm font-medium">Your AI Assistant</p>
-      <Separator />
-
-      {/* Message list */}
-      <div className="my-3 flex h-72 flex-col gap-2 overflow-y-auto pr-1">
-        {messages.length === 0 ? (
-          <p className="text-xs text-muted-foreground">
-            Describe your trip — e.g. &ldquo;4 day trip to Toronto&rdquo; — and I&apos;ll build your itinerary.
-          </p>
-        ) : (
-          messages.map((m, i) => (
-            <div
-              key={i}
-              className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                m.role === "user"
-                  ? "self-end bg-primary text-primary-foreground"
-                  : "self-start bg-muted text-foreground"
-              }`}
-            >
-              {m.content}
-            </div>
-          ))
-        )}
-
-        {loading && (
-          <div className="self-start rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-            …
-          </div>
-        )}
-
-        <div ref={bottomRef} />
-      </div>
-
-      <Separator />
-
-      {/* Input row */}
-      <div className="mt-3 flex gap-2">
-        <Input
-          value={input}
-          onChange={(e) => onInputChange(e.target.value)}
-          placeholder="Type a message…"
-          className="text-sm"
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              onSend();
-            }
-          }}
-        />
-        <Button
-          type="button"
-          size="sm"
-          disabled={!input.trim() || loading}
-          onClick={onSend}
-        >
-          Send
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-// ── SearchPanel ───────────────────────────────────────────────────────────────
+// ── SearchPanel (Workspace Orchestrator) ──────────────────────────────────────
 
 export default function SearchPanel({
   initialUserId = null,
+  initialUser = null,
   initialSaved = [],
   initialItineraries = [],
   initialItineraryId = null,
@@ -414,7 +177,6 @@ export default function SearchPanel({
 
   const [saved, setSaved] = useState<SavedItem[]>(initialSaved);
   const [savingKey, setSavingKey] = useState<string | null>(null);
-
   const [savedLoading, setSavedLoading] = useState(false);
   const [savedError, setSavedError] = useState<string | null>(null);
 
@@ -432,24 +194,35 @@ export default function SearchPanel({
   const [itemsError, setItemsError] = useState<string | null>(null);
 
   const [creatingItin, setCreatingItin] = useState(false);
+  const [deletingItinId, setDeletingItinId] = useState<string | null>(null);
+  const [sidebarError, setSidebarError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
 
-  const [newItinTitle, setNewItinTitle] = useState("My Trip");
-  const [newDaysCount, setNewDaysCount] = useState(3);
-  const [newItinTitleError, setNewItinTitleError] = useState<string | null>(null);
+  const preferences = useUserPreferences();
 
-  const [chatOpen, setChatOpen] = useState(true);
+  const [newItinTitle, setNewItinTitle] = useState("");
+  const [newDaysOverride, setNewDaysOverride] = useState<string | null>(null);
+  const [newItinTitleError, setNewItinTitleError] = useState<string | null>(null);
+  const newDaysInput = newDaysOverride ?? String(preferences.defaultDays);
+
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [settingsDialogTab, setSettingsDialogTab] = useState<SettingsDialogTab | null>(null);
+  const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
-  const SAVED_MIN_HEIGHT = 256;
-  const [savedHeight, setSavedHeight] = useState<number | null>(null);
-  const [savedAtMax, setSavedAtMax] = useState(false);
-  const savedScrollRef = useRef<HTMLDivElement | null>(null);
-  const savedListRef = useRef<HTMLUListElement | null>(null);
-  const dragCleanupRef = useRef<(() => void) | null>(null);
+  const newTitleInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileSidebarTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const desktopAccountTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const prevMobileSidebarOpenRef = useRef(false);
+  const skipMobileFocusRestoreRef = useRef(false);
+  const activeUserIdRef = useRef<string | null>(initialUserId);
+  const itinerariesRef = useRef<Itinerary[]>(initialItineraries);
+  const itineraryIdRef = useRef<string | null>(initialItineraryId);
   const searchAbortRef = useRef<AbortController | null>(null);
+  const newItinErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedLoadedUserIdRef = useRef<string | null>(initialUserId);
   const itinsLoadedUserIdRef = useRef<string | null>(initialUserId);
   const loadedItemsKeyRef = useRef<string | null>(
@@ -467,19 +240,91 @@ export default function SearchPanel({
       : status === "authenticated"
       ? (sessionData?.user?.id ?? null)
       : null;
+  const activeUser: SidebarUser | null =
+    status === "loading"
+      ? initialUser
+      : status === "authenticated" && sessionData?.user?.id
+      ? {
+          id: sessionData.user.id,
+          name: sessionData.user.name ?? null,
+          email: sessionData.user.email ?? null,
+          image: sessionData.user.image ?? null,
+        }
+      : null;
   const authed = Boolean(activeUserId);
   const activeItemsKey =
     activeUserId && itineraryId ? `${activeUserId}:${itineraryId}` : null;
+
+  function clearTitleErrorTimer() {
+    if (newItinErrorTimerRef.current) {
+      clearTimeout(newItinErrorTimerRef.current);
+      newItinErrorTimerRef.current = null;
+    }
+  }
+
+  function showTitleError(msg: string) {
+    clearTitleErrorTimer();
+    setNewItinTitleError(msg);
+    newItinErrorTimerRef.current = setTimeout(() => {
+      newItinErrorTimerRef.current = null;
+      setNewItinTitleError(null);
+    }, 2500);
+  }
+
+  useEffect(() => {
+    activeUserIdRef.current = activeUserId;
+  }, [activeUserId]);
 
   useEffect(() => {
     activeItemsKeyRef.current = activeItemsKey;
   }, [activeItemsKey]);
 
   useEffect(() => {
+    itinerariesRef.current = itineraries;
+  }, [itineraries]);
+
+  useEffect(() => {
+    itineraryIdRef.current = itineraryId;
+  }, [itineraryId]);
+
+  useEffect(() => {
+    const wasOpen = prevMobileSidebarOpenRef.current;
+    prevMobileSidebarOpenRef.current = mobileSidebarOpen;
+    if (wasOpen && !mobileSidebarOpen) {
+      if (skipMobileFocusRestoreRef.current) {
+        skipMobileFocusRestoreRef.current = false;
+      } else if (window.innerWidth < 1024) {
+        mobileSidebarTriggerRef.current?.focus({ preventScroll: true });
+      }
+    }
+  }, [mobileSidebarOpen]);
+
+  useEffect(() => {
     return () => {
-      if (dragCleanupRef.current) dragCleanupRef.current();
       searchAbortRef.current?.abort();
+      clearTitleErrorTimer();
     };
+  }, []);
+
+  useEffect(() => {
+    if (settingsDialogTab !== null) return;
+    if (!chatOpen && !mobileSidebarOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (chatOpen) setChatOpen(false);
+      else if (mobileSidebarOpen) setMobileSidebarOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [chatOpen, mobileSidebarOpen, settingsDialogTab]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    function handleChange(e: MediaQueryListEvent) {
+      if (e.matches) setMobileSidebarOpen(false);
+    }
+    mq.addEventListener("change", handleChange);
+    return () => mq.removeEventListener("change", handleChange);
   }, []);
 
   useEffect(() => {
@@ -590,8 +435,6 @@ export default function SearchPanel({
         setSelectedSavedIds(new Set());
         setSavedError(null);
         setSavedLoading(false);
-        setSavedHeight(null);
-        setSavedAtMax(false);
         return;
       }
 
@@ -628,10 +471,13 @@ export default function SearchPanel({
       if (status === "loading") return;
       if (!activeUserId) {
         itinsLoadedUserIdRef.current = null;
+        itinerariesRef.current = [];
+        itineraryIdRef.current = null;
         setItineraries([]);
         setItineraryId(null);
         setItineraryItems([]);
         setItinError(null);
+        setSidebarError(null);
         setItemsError(null);
         setItinLoading(false);
         setItemsLoading(false);
@@ -648,12 +494,17 @@ export default function SearchPanel({
         if (cancelled) return;
 
         itinsLoadedUserIdRef.current = activeUserId;
+        itinerariesRef.current = list;
         setItineraries(list);
-        setItineraryId((prev) => {
-          if (prev && list.some((i) => i.id === prev)) return prev;
-          if (urlItinId && list.some((i) => i.id === urlItinId)) return urlItinId;
-          return list[0]?.id ?? null;
-        });
+        const currId = itineraryIdRef.current;
+        const resolvedId =
+          currId && list.some((i) => i.id === currId)
+            ? currId
+            : urlItinId && list.some((i) => i.id === urlItinId)
+            ? urlItinId
+            : list[0]?.id ?? null;
+        itineraryIdRef.current = resolvedId;
+        setItineraryId(resolvedId);
       } catch (e) {
         if (!cancelled) {
           setItinError(e instanceof Error ? e.message : "Failed to load itineraries");
@@ -736,77 +587,11 @@ export default function SearchPanel({
       setSavedError(null);
       const list = await fetchSaved();
       setSaved(list);
-      if (list.length === 0) {
-        setSavedHeight(null);
-        setSavedAtMax(false);
-      } else {
-        requestAnimationFrame(() => {
-          const listHeight = savedListRef.current?.offsetHeight ?? 0;
-          if (listHeight > 0 && listHeight <= SAVED_MIN_HEIGHT) {
-            setSavedHeight(null);
-            setSavedAtMax(false);
-          }
-        });
-      }
     } catch (e) {
       setSavedError(e instanceof Error ? e.message : "Failed to load saved places");
     } finally {
       setSavedLoading(false);
     }
-  }
-
-  function handleSavedDividerMouseDown(e: React.MouseEvent<HTMLDivElement>) {
-    if (saved.length === 0) return;
-    const container = savedScrollRef.current;
-    const list = savedListRef.current;
-    if (!container || !list) return;
-
-    const maxHeight = list.offsetHeight;
-    if (maxHeight <= SAVED_MIN_HEIGHT) return;
-
-    e.preventDefault();
-    let lastY = e.clientY;
-    let currentHeight = container.offsetHeight;
-    let moved = false;
-
-    const prevUserSelect = document.body.style.userSelect;
-    const prevCursor = document.body.style.cursor;
-    document.body.style.userSelect = "none";
-    document.body.style.cursor = "row-resize";
-
-    function onMove(ev: MouseEvent) {
-      const delta = ev.clientY - lastY;
-      if (delta === 0) return;
-      const desired = currentHeight + delta;
-      const next = Math.max(SAVED_MIN_HEIGHT, Math.min(maxHeight, desired));
-      const actualDelta = next - currentHeight;
-      if (actualDelta === 0) return;
-      moved = true;
-      lastY += actualDelta;
-      currentHeight = next;
-      setSavedAtMax(false);
-      setSavedHeight(next);
-    }
-
-    function cleanup() {
-      document.body.style.userSelect = prevUserSelect;
-      document.body.style.cursor = prevCursor;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-      dragCleanupRef.current = null;
-    }
-
-    function onUp() {
-      cleanup();
-      if (!moved) return;
-      const atMax = currentHeight >= maxHeight;
-      setSavedAtMax(atMax);
-      if (atMax) setSavedHeight(null);
-    }
-
-    dragCleanupRef.current = cleanup;
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
   }
 
   async function performSearch(q: string) {
@@ -834,22 +619,247 @@ export default function SearchPanel({
     }
   }
 
-  async function onSearch() {
+  function handleSearch() {
     const q = query.trim();
     if (!q) {
       searchAbortRef.current?.abort();
       searchAbortRef.current = null;
       setLoading(false);
       setSearchedQuery("");
-      setError("Enter a city or name of neighbourhood (e.g. Toronto)");
+      setError("Enter a city or neighbourhood name (e.g. Toronto).");
       setResults([]);
       return;
     }
-    await performSearch(q);
+    void performSearch(q);
   }
 
-  async function handleChatSend() {
-    const text = chatInput.trim();
+  async function handleSavePlace(r: PlaceResult) {
+    if (!authed) {
+      void signIn("github");
+      return;
+    }
+    const key = `${r.provider}:${r.providerId}`;
+    try {
+      setSavingKey(key);
+      await savePlace(r);
+      await refreshSaved();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save place");
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function handleRemovePlace(placeId: string) {
+    if (!authed) {
+      void signIn("github");
+      return;
+    }
+    try {
+      setSavingKey(`remove:${placeId}`);
+      setSavedError(null);
+      await removePlace(placeId);
+      setSelectedSavedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(placeId);
+        return next;
+      });
+      await refreshSaved();
+    } catch (e) {
+      setSavedError(e instanceof Error ? e.message : "Failed to remove place");
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function handleRemoveAllSaved() {
+    if (!authed) {
+      void signIn("github");
+      return;
+    }
+    try {
+      setSavingKey("remove-all");
+      setSavedError(null);
+      await removeAllSaved();
+      setSelectedSavedIds(new Set());
+      await refreshSaved();
+    } catch (e) {
+      setSavedError(e instanceof Error ? e.message : "Failed to remove all saved places");
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  function parseClampedDays(raw: string): number {
+    const n = Number(raw);
+    if (!raw.trim() || !Number.isFinite(n)) return preferences.defaultDays;
+    return Math.max(1, Math.min(Math.trunc(n), 14));
+  }
+
+  async function handleCreateItinerary() {
+    if (!authed) {
+      void signIn("github");
+      return;
+    }
+    const trimmed = newItinTitle.trim();
+    if (!trimmed) return;
+
+    if (titleAlreadyExists) {
+      showTitleError("An itinerary with this name already exists — enter a different name.");
+      return;
+    }
+
+    const daysCount = parseClampedDays(newDaysInput);
+    setNewDaysOverride(daysCount === preferences.defaultDays ? null : String(daysCount));
+
+    try {
+      setCreatingItin(true);
+      setItinError(null);
+
+      const created = await createItinerary(trimmed, daysCount);
+      const list = await fetchItineraries();
+      itinerariesRef.current = list;
+      setItineraries(list);
+      itineraryIdRef.current = created.id;
+      setItineraryId(created.id);
+      setNewItinTitle("");
+      setNewDaysOverride(null);
+      clearTitleErrorTimer();
+      setNewItinTitleError(null);
+    } catch (e: unknown) {
+      const err = e as { code?: string; status?: number; message?: string };
+      if (err?.code === "DUPLICATE_ITINERARY" || err?.status === 409) {
+        showTitleError(
+          err?.message || "An itinerary with this name already exists — enter a different name."
+        );
+        return;
+      }
+      setItinError(e instanceof Error ? e.message : "Failed to create itinerary");
+    } finally {
+      setCreatingItin(false);
+    }
+  }
+
+  async function handleDeleteItinerary(id: string) {
+    if (!authed || !activeUserId || deletingItinId !== null) return;
+    const requestUserId = activeUserId;
+    const deletedKey = `${requestUserId}:${id}`;
+
+    try {
+      setDeletingItinId(id);
+      setSidebarError(null);
+      await deleteItineraryApi(id);
+      if (activeUserIdRef.current !== requestUserId) return;
+
+      const nextList = itinerariesRef.current.filter((it) => it.id !== id);
+      itinerariesRef.current = nextList;
+      setItineraries(nextList);
+
+      if (loadedItemsKeyRef.current === deletedKey) {
+        loadedItemsKeyRef.current = null;
+      }
+
+      if (itineraryIdRef.current === id) {
+        const nextId = nextList[0]?.id ?? null;
+        itemsFetchReqIdRef.current++;
+        itineraryIdRef.current = nextId;
+        setItineraryId(nextId);
+      }
+    } catch (e) {
+      if (activeUserIdRef.current === requestUserId) {
+        setSidebarError(e instanceof Error ? e.message : "Failed to delete trip");
+      }
+    } finally {
+      setDeletingItinId(null);
+    }
+  }
+
+  function handleNavigateSection(section: "discover" | "saved" | "itinerary") {
+    const el = document.getElementById(section);
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function handleNewTrip() {
+    if (mobileSidebarOpen) {
+      skipMobileFocusRestoreRef.current = true;
+      setMobileSidebarOpen(false);
+    }
+    handleNavigateSection("itinerary");
+    requestAnimationFrame(() => {
+      newTitleInputRef.current?.focus({ preventScroll: true });
+    });
+  }
+
+  function handleToggleChat() {
+    const next = !chatOpen;
+    setChatOpen(next);
+    if (next) setMobileSidebarOpen(false);
+  }
+
+  function handleOpenMobileSidebar() {
+    setChatOpen(false);
+    setMobileSidebarOpen(true);
+  }
+
+  function handleOpenSettings(tab: SettingsDialogTab, fromMobile: boolean) {
+    if (fromMobile && mobileSidebarOpen) {
+      skipMobileFocusRestoreRef.current = true;
+      setMobileSidebarOpen(false);
+    }
+    setSettingsDialogTab(tab);
+  }
+
+  function handleCloseSettings() {
+    setSettingsDialogTab(null);
+    requestAnimationFrame(() => {
+      if (window.innerWidth < 1024) {
+        mobileSidebarTriggerRef.current?.focus();
+      } else {
+        desktopAccountTriggerRef.current?.focus();
+      }
+    });
+  }
+
+  async function handleGenerate(useSelected: boolean) {
+    if (!authed) {
+      void signIn("github");
+      return;
+    }
+    if (!itineraryId || !activeUserId) return;
+    const targetId = itineraryId;
+    const targetKey = `${activeUserId}:${targetId}`;
+
+    try {
+      setGenerating(true);
+      setItemsError(null);
+
+      const generated = await generateItinerary(targetId, {
+        mode: "replace",
+        perDay: preferences.defaultPerDay,
+        shuffle: genShuffle,
+        ...(useSelected ? { placeIds: selectedSavedIdArray } : {}),
+      });
+
+      if (activeItemsKeyRef.current === targetKey) {
+        itemsFetchReqIdRef.current++;
+        loadedItemsKeyRef.current = targetKey;
+        setItemsLoading(false);
+        setItemsError(null);
+        setItineraryItems(generated.items);
+      } else if (loadedItemsKeyRef.current === targetKey) {
+        loadedItemsKeyRef.current = null;
+      }
+    } catch (e) {
+      if (activeItemsKeyRef.current === targetKey) {
+        setItemsError(e instanceof Error ? e.message : "Failed to generate itinerary");
+      }
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function handleChatSend(overrideText?: string) {
+    const text = (overrideText ?? chatInput).trim();
     if (!text || chatLoading) return;
 
     const newMessages: ChatMessage[] = [...messages, { role: "user", content: text }];
@@ -857,7 +867,7 @@ export default function SearchPanel({
       .filter((m) => !m.isError)
       .map(({ role, content }) => ({ role, content }));
     setMessages(newMessages);
-    setChatInput("");
+    if (overrideText === undefined) setChatInput("");
     setChatLoading(true);
 
     try {
@@ -868,10 +878,12 @@ export default function SearchPanel({
           messages: apiMessages,
           context: {
             savedCount: saved.length,
-            selectedSavedCount: selectedSavedCount,
+            selectedSavedCount,
             itineraryCount: itineraries.length,
             activeItineraryId: itineraryId ?? undefined,
             activeItineraryTitle: selectedItinerary?.title,
+            defaultDays: preferences.defaultDays,
+            defaultPerDay: preferences.defaultPerDay,
           },
         }),
       });
@@ -898,13 +910,13 @@ export default function SearchPanel({
           void performSearch(effect.query);
         } else if (effect.type === "refresh_itineraries") {
           const list = await fetchItineraries();
+          itinerariesRef.current = list;
           setItineraries(list);
           if (effect.selectId) {
-            // Defer switching active itinerary if a generate effect for it follows in this batch
-            // so loadItems doesn't race against generateItinerary and wipe the generated items.
             if (generatedIds.has(effect.selectId)) {
               deferredSelectId = effect.selectId;
             } else {
+              itineraryIdRef.current = effect.selectId;
               setItineraryId(effect.selectId);
             }
           }
@@ -923,6 +935,7 @@ export default function SearchPanel({
             setItemsLoading(false);
             setItemsError(null);
             setItineraryItems(generated.items);
+            itineraryIdRef.current = effect.itineraryId;
             setItineraryId(effect.itineraryId);
             if (deferredSelectId === effect.itineraryId) {
               deferredSelectId = null;
@@ -930,6 +943,7 @@ export default function SearchPanel({
           } catch (e) {
             genError = e instanceof Error ? e.message : "Generation failed";
             if (deferredSelectId) {
+              itineraryIdRef.current = deferredSelectId;
               setItineraryId(deferredSelectId);
               deferredSelectId = null;
             }
@@ -938,12 +952,11 @@ export default function SearchPanel({
       }
 
       if (deferredSelectId) {
+        itineraryIdRef.current = deferredSelectId;
         setItineraryId(deferredSelectId);
       }
 
-      const assistantText = genError
-        ? `Generation failed: ${genError}`
-        : data.message;
+      const assistantText = genError ? `Generation failed: ${genError}` : data.message;
 
       if (assistantText) {
         setMessages((prev) => [
@@ -958,11 +971,12 @@ export default function SearchPanel({
         {
           role: "assistant",
           isError: true,
-          content: err?.status === 401
-            ? "Please sign in to use AI planning features."
-            : err?.status === 429
-            ? (err.message ?? "The AI is temporarily rate-limited. Please try again.")
-            : "Sorry, I couldn't reach the AI right now. Please try again.",
+          content:
+            err?.status === 401
+              ? "Please sign in to use AI planning features."
+              : err?.status === 429
+              ? (err.message ?? "The AI is temporarily rate-limited. Please try again.")
+              : "Sorry, I couldn't reach the AI right now. Please try again.",
         },
       ]);
     } finally {
@@ -970,526 +984,228 @@ export default function SearchPanel({
     }
   }
 
-  async function handleSavePlace(r: PlaceResult) {
-    if (!authed) {
-      void signIn("github");
-      return;
-    }
-    const key = `${r.provider}:${r.providerId}`;
-    try {
-      setSavingKey(key);
-      await savePlace(r);
-      await refreshSaved();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to save place");
-    } finally {
-      setSavingKey(null);
-    }
-  }
-
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <MapPin size={20} />
-              </span>
-              Destination Itinerary Generator
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Search for a City to discover its attractions and build a travel/vacation Itinerary!
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <AuthButton />
-          </div>
-        </div>
-      </CardHeader>
+    <>
+      <div className="flex min-h-screen" inert={settingsDialogTab !== null}>
+        <AppSidebar
+          authed={authed}
+          authLoading={status === "loading"}
+          user={activeUser}
+          itineraries={itineraries}
+          itineraryId={itineraryId}
+          savedCount={saved.length}
+          itineraryItemCount={itemsLoading || itemsError ? null : itineraryItems.length}
+          deletingItinId={deletingItinId}
+          sidebarError={sidebarError}
+          collapsed={sidebarCollapsed}
+          mobileOpen={mobileSidebarOpen}
+          settingsOpen={settingsDialogTab !== null}
+          desktopAccountTriggerRef={desktopAccountTriggerRef}
+          onToggleCollapse={() => setSidebarCollapsed((c) => !c)}
+          onCloseMobile={() => setMobileSidebarOpen(false)}
+          onDismissSidebarError={() => setSidebarError(null)}
+          onNavigateSection={handleNavigateSection}
+          onSelectItinerary={(id) => {
+            setSidebarError(null);
+            itineraryIdRef.current = id;
+            setItineraryId(id);
+          }}
+          onNewTrip={handleNewTrip}
+          onDeleteItinerary={handleDeleteItinerary}
+          onOpenSettings={handleOpenSettings}
+        />
 
-      <CardContent className="space-y-4">
-
-        {/* Two-column area: search+results left, chat panel right */}
-        <div className="flex items-start">
-
-          {/* Left column */}
-          <div className="min-w-0 flex-1 space-y-4">
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Try: Toronto"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") void onSearch();
-                }}
-              />
-              <Button type="button" onClick={onSearch} disabled={!canSearch}>
-                {loading ? "Searching..." : "Search"}
+      <main inert={mobileSidebarOpen} className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-7">
+        <div className="mx-auto w-full max-w-6xl space-y-5">
+          {/* Top Workspace Bar */}
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <Button
+                ref={mobileSidebarTriggerRef}
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                className="lg:hidden"
+                onClick={handleOpenMobileSidebar}
+                aria-label="Open navigation sidebar"
+                aria-expanded={mobileSidebarOpen}
+                aria-controls="mobile-sidebar"
+              >
+                <PanelLeft size={16} />
               </Button>
-            </div>
 
-            {error ? <p className="text-sm text-red-600">{error}</p> : null}
+              {/* Brand lockup shown on mobile (< lg); desktop brand lives in the sidebar */}
+              <div className="flex min-w-0 items-center gap-2.5 lg:hidden">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
+                  <MapPin size={18} />
+                </span>
+                <div className="min-w-0">
+                  <h1 className="truncate text-lg font-semibold tracking-tight">Local Explorer</h1>
+                  <p className="truncate text-xs text-muted-foreground">
+                    Discover attractions and plan itineraries.
+                  </p>
+                </div>
+              </div>
 
-            <SearchResultsList
-              results={results}
-              savedKeys={savedKeys}
-              savingKey={savingKey}
-              query={searchedQuery}
-              onSave={handleSavePlace}
-            />
-          </div>
-
-          {/* Right column: toggle tab + collapsible chat panel */}
-          <div className="ml-3 flex flex-shrink-0 items-start">
-            <button
-              type="button"
-              onClick={() => setChatOpen((o) => !o)}
-              className="mt-1 flex h-16 w-5 items-center justify-center rounded-l-md border border-r-0 bg-muted text-muted-foreground transition-colors hover:bg-accent"
-              aria-label={chatOpen ? "Collapse chat panel" : "Expand chat panel"}
-            >
-              {chatOpen ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
-            </button>
-
-            <div className={`overflow-hidden transition-all duration-300 ${chatOpen ? "w-80" : "w-0"}`}>
-              <div className="w-80 rounded-r-lg border border-l-2 p-4 shadow-md">
-                <ChatPanel
-                  messages={messages}
-                  input={chatInput}
-                  loading={chatLoading}
-                  onInputChange={setChatInput}
-                  onSend={handleChatSend}
-                />
+              {/* Desktop context heading */}
+              <div className="hidden min-w-0 lg:block">
+                <h1 className="truncate text-xl font-semibold tracking-tight">
+                  {selectedItinerary ? selectedItinerary.title : "Explore & Plan"}
+                </h1>
+                <p className="truncate text-xs text-muted-foreground">
+                  {selectedItinerary
+                    ? `${selectedItinerary.daysCount} ${selectedItinerary.daysCount === 1 ? "day" : "days"} · Discover attractions and organize your schedule.`
+                    : "Discover attractions and build day-by-day itineraries."}
+                </p>
               </div>
             </div>
-          </div>
 
-        </div>
-
-        <Separator />
-
-        {/* Saved section */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <p className="flex items-center gap-2 text-base font-semibold">
-              <Bookmark size={16} className="text-primary" />
-              Saved
-              <span className="text-xs font-normal text-muted-foreground">
-                ({selectedSavedCount} selected)
-              </span>
-            </p>
-
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
               <Button
                 type="button"
+                variant={chatOpen ? "default" : "outline"}
                 size="sm"
-                variant="outline"
-                disabled={!authed || saved.length === 0}
-                onClick={selectAllSaved}
+                onClick={handleToggleChat}
+                aria-expanded={chatOpen}
+                aria-controls="assistant-drawer"
               >
-                Select all
+                <Sparkles size={14} />
+                Assistant
               </Button>
-
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                disabled={!authed || selectedSavedCount === 0}
-                onClick={clearSelectedSaved}
-              >
-                Clear Selected
-              </Button>
-
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                disabled={!authed || saved.length === 0 || savingKey === "remove-all"}
-                onClick={async () => {
-                  if (!authed) {
-                    void signIn("github");
-                    return;
-                  }
-                  const ok = window.confirm("Remove ALL saved places? This cannot be undone.");
-                  if (!ok) return;
-                  try {
-                    setSavingKey("remove-all");
-                    await removeAllSaved();
-                    setSelectedSavedIds(new Set());
-                    await refreshSaved();
-                  } catch (e) {
-                    setError(e instanceof Error ? e.message : "Failed to remove all saved places");
-                  } finally {
-                    setSavingKey(null);
-                  }
-                }}
-              >
-                Remove all
-              </Button>
-            </div>
-          </div>
-
-          {savedLoading ? (
-            <p className="text-sm text-muted-foreground">Loading saved…</p>
-          ) : savedError ? (
-            <p className="text-sm text-red-600">{savedError}</p>
-          ) : saved.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No saved places yet.</p>
-          ) : (
-            <div
-              ref={savedScrollRef}
-              className={
-                savedAtMax
-                  ? "overflow-y-auto"
-                  : savedHeight === null
-                  ? "max-h-64 overflow-y-auto"
-                  : "overflow-y-auto"
-              }
-              style={!savedAtMax && savedHeight !== null ? { maxHeight: `${savedHeight}px` } : undefined}
-            >
-              <ul ref={savedListRef} className="grid grid-cols-2 gap-2">
-                {saved.map((s) => (
-                  <li
-                    key={s.placeId}
-                    className={`rounded-lg border p-2 transition-colors hover:border-primary/40 hover:bg-accent/30 ${
-                      activeSelectedSavedIds.has(s.placeId) ? "border-primary/60 bg-primary/5" : ""
-                    }`}
-                  >
-                    <div className="flex flex-col gap-1.5">
-                      <div className="flex items-start gap-2">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-4 w-4 flex-shrink-0"
-                          checked={activeSelectedSavedIds.has(s.placeId)}
-                          onChange={() => toggleSavedSelection(s.placeId)}
-                          disabled={!authed}
-                          aria-label={`Select ${s.name}`}
-                        />
-                        <p className="line-clamp-2 text-sm font-medium leading-tight">{s.name}</p>
-                      </div>
-                      <div className="flex items-center justify-between gap-1">
-                        {s.category ? (
-                          <CategoryBadge category={s.category} className="text-xs" />
-                        ) : (
-                          <span />
-                        )}
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          className="h-6 px-2 text-xs"
-                          disabled={!authed || savingKey === `remove:${s.placeId}`}
-                          onClick={async () => {
-                            if (!authed) {
-                              void signIn("github");
-                              return;
-                            }
-                            try {
-                              setSavingKey(`remove:${s.placeId}`);
-                              await removePlace(s.placeId);
-                              setSelectedSavedIds((prev) => {
-                                const next = new Set(prev);
-                                next.delete(s.placeId);
-                                return next;
-                              });
-                              await refreshSaved();
-                            } catch (e) {
-                              setError(e instanceof Error ? e.message : "Failed to remove place");
-                            } finally {
-                              setSavingKey(null);
-                            }
-                          }}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {saved.length > 0 ? (
-            <div
-              onMouseDown={handleSavedDividerMouseDown}
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Resize saved section"
-              className="group relative -my-1 flex h-3 cursor-row-resize items-center"
-            >
-              <div className="h-px w-full bg-border transition-all group-hover:h-0.5 group-hover:bg-primary/60" />
-            </div>
-          ) : (
-            <Separator />
-          )}
-        </div>
-
-        {/* Itinerary section */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <p className="flex items-center gap-2 text-base font-semibold">
-              <CalendarDays size={16} className="text-primary" />
-              Itinerary
-            </p>
-            {itinLoading ? <p className="text-xs text-muted-foreground">Loading…</p> : null}
-          </div>
-
-          {!authed ? (
-            <p className="text-sm text-muted-foreground">Sign in to create and generate itineraries.</p>
-          ) : itinError ? (
-            <p className="text-sm text-red-600">{itinError}</p>
-          ) : (
-            <div className="space-y-3">
-              {/* Create */}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Input
-                  value={newItinTitle}
-                  onChange={(e) => {
-                    setNewItinTitle(e.target.value);
-                    if (newItinTitleError) {
-                      setNewItinTitleError(null);
-                    }
-                  }}
-                  placeholder="Trip title"
-                  className={newItinTitleError ? "border-red-500 focus-visible:ring-red-500" : ""}
-                />
-                {newItinTitleError ? (
-                  <p className="text-sm text-red-600">{newItinTitleError}</p>
-                ) : null}
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground whitespace-nowrap"># Days</span>
-                  <Input
-                    id="new-itinerary-days"
-                    type="number"
-                    min={1}
-                    max={14}
-                    value={newDaysCount}
-                    onChange={(e) => setNewDaysCount(Number(e.target.value))}
-                    className="sm:w-28"
-                    aria-label="Number of days"
-                  />
-                </div>
-
+              <ThemeToggle />
+              {!authed && status !== "loading" ? (
                 <Button
                   type="button"
-                  disabled={creatingItin || !newItinTitle.trim()}
-                  onClick={async () => {
-                    if (!authed) {
-                      void signIn("github");
-                      return;
-                    }
-
-                    if (titleAlreadyExists) {
-                      setNewItinTitleError("Itinerary with this name already exists, enter a different name");
-                      setTimeout(() => setNewItinTitleError(null), 2500);
-                      return;
-                    }
-
-                    try {
-                      setCreatingItin(true);
-                      setItinError(null);
-
-                      const created = await createItinerary(newItinTitle.trim(), newDaysCount || 3);
-
-                      const list = await fetchItineraries();
-                      setItineraries(list);
-                      setItineraryId(created.id);
-                    } catch (e: unknown) {
-                      const err = e as { code?: string; status?: number; message?: string };
-                      if (err?.code === "DUPLICATE_ITINERARY" || err?.status === 409) {
-                        setNewItinTitleError(
-                          err?.message || "Itinerary with this name already exists, enter a different name"
-                        );
-                        setTimeout(() => setNewItinTitleError(null), 2500);
-                        return;
-                      }
-                      setItinError(e instanceof Error ? e.message : "Failed to create itinerary");
-                    } finally {
-                      setCreatingItin(false);
-                    }
-                  }}
+                  size="sm"
+                  className="lg:hidden"
+                  onClick={() => void signIn("github")}
                 >
-                  {creatingItin ? "Creating..." : "New itinerary"}
+                  Sign in
                 </Button>
-              </div>
-
-              {/* Pick + Generate */}
-              {itineraries.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No itineraries yet.</p>
-              ) : (
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                  <select
-                    className="h-10 rounded-md border bg-background px-3 text-sm"
-                    value={itineraryId ?? ""}
-                    onChange={(e) => setItineraryId(e.target.value)}
-                  >
-                    {itineraries.map((it) => (
-                      <option key={it.id} value={it.id}>
-                        {it.title} ({it.daysCount} days)
-                      </option>
-                    ))}
-                  </select>
-
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={genShuffle}
-                      onChange={(e) => setGenShuffle(e.target.checked)}
-                    />
-                    Shuffle
-                  </label>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!itineraryId || generating}
-                    onClick={async () => {
-                      if (!authed) {
-                        void signIn("github");
-                        return;
-                      }
-                      if (!itineraryId || !activeUserId) return;
-                      const targetId = itineraryId;
-                      const targetKey = `${activeUserId}:${targetId}`;
-
-                      try {
-                        setGenerating(true);
-                        setItemsError(null);
-
-                        const generated = await generateItinerary(targetId, {
-                          mode: "replace",
-                          perDay: 3,
-                          shuffle: genShuffle,
-                        });
-
-                        if (activeItemsKeyRef.current === targetKey) {
-                          itemsFetchReqIdRef.current++;
-                          loadedItemsKeyRef.current = targetKey;
-                          setItemsLoading(false);
-                          setItemsError(null);
-                          setItineraryItems(generated.items);
-                        } else if (loadedItemsKeyRef.current === targetKey) {
-                          loadedItemsKeyRef.current = null;
-                        }
-                      } catch (e) {
-                        if (activeItemsKeyRef.current === targetKey) {
-                          setItemsError(e instanceof Error ? e.message : "Failed to generate itinerary");
-                        }
-                      } finally {
-                        setGenerating(false);
-                      }
-                    }}
-                  >
-                    {generating ? "Generating..." : "Generate (all saved)"}
-                  </Button>
-
-                  <Button
-                    type="button"
-                    disabled={!itineraryId || generating || selectedSavedCount === 0}
-                    onClick={async () => {
-                      if (!authed) {
-                        void signIn("github");
-                        return;
-                      }
-                      if (!itineraryId || !activeUserId) return;
-                      const targetId = itineraryId;
-                      const targetKey = `${activeUserId}:${targetId}`;
-
-                      try {
-                        setGenerating(true);
-                        setItemsError(null);
-
-                        const generated = await generateItinerary(targetId, {
-                          mode: "replace",
-                          perDay: 3,
-                          shuffle: genShuffle,
-                          placeIds: selectedSavedIdArray,
-                        });
-
-                        if (activeItemsKeyRef.current === targetKey) {
-                          itemsFetchReqIdRef.current++;
-                          loadedItemsKeyRef.current = targetKey;
-                          setItemsLoading(false);
-                          setItemsError(null);
-                          setItineraryItems(generated.items);
-                        } else if (loadedItemsKeyRef.current === targetKey) {
-                          loadedItemsKeyRef.current = null;
-                        }
-                      } catch (e) {
-                        if (activeItemsKeyRef.current === targetKey) {
-                          setItemsError(e instanceof Error ? e.message : "Failed to generate itinerary");
-                        }
-                      } finally {
-                        setGenerating(false);
-                      }
-                    }}
-                  >
-                    Generate (selected)
-                  </Button>
-                </div>
-              )}
-
-              {/* Items */}
-              {itemsLoading ? (
-                <p className="text-sm text-muted-foreground">Loading itinerary items…</p>
-              ) : itemsError ? (
-                <p className="text-sm text-red-600">{itemsError}</p>
-              ) : !selectedItinerary ? (
-                <p className="text-sm text-muted-foreground">Select an itinerary to see items.</p>
-              ) : itineraryItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No items yet. Click <span className="font-medium">Generate (all saved)</span> or{" "}
-                  <span className="font-medium">Generate (selected)</span>.
-                </p>
-              ) : (
-                <div className="max-h-[28rem] overflow-y-auto space-y-3 pr-1">
-                  {Array.from({ length: selectedItinerary.daysCount }, (_, day) => {
-                    const dayItems = itemsByDay.get(day) ?? [];
-                    return (
-                      <div key={day} className="overflow-hidden rounded-lg border">
-                        <p className="flex items-center gap-2 border-b bg-accent/40 px-3 py-2 text-sm font-semibold">
-                          <CalendarDays size={14} className="text-primary" />
-                          Day {day + 1}
-                          <span className="ml-auto text-xs font-normal text-muted-foreground">
-                            {dayItems.length} {dayItems.length === 1 ? "stop" : "stops"}
-                          </span>
-                        </p>
-                        <div className="p-3">
-                        {dayItems.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">No items.</p>
-                        ) : (
-                          <ul className="space-y-2">
-                            {dayItems.map((it, idx) => (
-                              <li key={it.id} className="flex items-start justify-between gap-3">
-                                <div className="flex items-start gap-3">
-                                  <span className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                                    {idx + 1}
-                                  </span>
-                                  <div>
-                                    <p className="font-medium">{it.place.name}</p>
-                                    {it.place.address ? (
-                                      <p className="text-sm text-muted-foreground">{it.place.address}</p>
-                                    ) : null}
-                                  </div>
-                                </div>
-                                <CategoryBadge category={it.place.category} />
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+              ) : null}
             </div>
-          )}
-        </div>
+          </header>
 
-      </CardContent>
-    </Card>
+          {/* Row 1: Full-width Discover Places */}
+          <SearchSection
+            query={query}
+            searchedQuery={searchedQuery}
+            loading={loading}
+            canSearch={canSearch}
+            error={error}
+            results={results}
+            savedKeys={savedKeys}
+            savingKey={savingKey}
+            onQueryChange={setQuery}
+            onSearch={handleSearch}
+            onSave={handleSavePlace}
+          />
+
+          {/* Row 2: Matched-height Saved (left) + Itinerary (right) */}
+          <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-12">
+            <SavedSection
+              authed={authed}
+              saved={saved}
+              savedLoading={savedLoading}
+              savedError={savedError}
+              activeSelectedSavedIds={activeSelectedSavedIds}
+              selectedSavedCount={selectedSavedCount}
+              savingKey={savingKey}
+              onToggleSelect={toggleSavedSelection}
+              onSelectAll={selectAllSaved}
+              onClearSelected={clearSelectedSaved}
+              onRemoveOne={handleRemovePlace}
+              onRemoveAll={handleRemoveAllSaved}
+            />
+
+            <ItinerarySection
+              authed={authed}
+              itineraries={itineraries}
+              itineraryId={itineraryId}
+              selectedItinerary={selectedItinerary}
+              itineraryItems={itineraryItems}
+              itemsByDay={itemsByDay}
+              itinLoading={itinLoading}
+              itinError={itinError}
+              itemsLoading={itemsLoading}
+              itemsError={itemsError}
+              creatingItin={creatingItin}
+              generating={generating}
+              newItinTitle={newItinTitle}
+              newDaysInput={newDaysInput}
+              newItinTitleError={newItinTitleError}
+              genShuffle={genShuffle}
+              selectedSavedCount={selectedSavedCount}
+              newTitleInputRef={newTitleInputRef}
+              onNewTitleChange={(val) => {
+                setNewItinTitle(val);
+                if (newItinTitleError) {
+                  clearTitleErrorTimer();
+                  setNewItinTitleError(null);
+                }
+              }}
+              onNewDaysChange={setNewDaysOverride}
+              onNewDaysBlur={() => {
+                const clamped = parseClampedDays(newDaysInput);
+                setNewDaysOverride(clamped === preferences.defaultDays ? null : String(clamped));
+              }}
+              onCreateItinerary={handleCreateItinerary}
+              onSelectItinerary={(id) => {
+                setSidebarError(null);
+                itineraryIdRef.current = id;
+                setItineraryId(id);
+              }}
+              onToggleShuffle={setGenShuffle}
+              onGenerateAll={() => handleGenerate(false)}
+              onGenerateSelected={() => handleGenerate(true)}
+            />
+          </div>
+        </div>
+      </main>
+
+      {/* Mobile backdrop when Assistant drawer is open */}
+      {chatOpen ? (
+        <div
+          aria-hidden="true"
+          onClick={() => setChatOpen(false)}
+          className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+        />
+      ) : null}
+
+      {/* Non-blocking right slide-over Assistant drawer */}
+      <aside
+        id="assistant-drawer"
+        aria-label="AI Assistant"
+        inert={!chatOpen}
+        aria-hidden={!chatOpen}
+        className={`fixed inset-y-0 right-0 z-50 w-full max-w-sm border-l bg-card p-4 shadow-2xl transition-transform duration-200 ease-out ${
+          chatOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <ChatPanel
+          messages={messages}
+          input={chatInput}
+          loading={chatLoading}
+          authed={authed}
+          savedCount={saved.length}
+          hasActiveItinerary={Boolean(itineraryId)}
+          onInputChange={setChatInput}
+          onSend={(text) => void handleChatSend(text)}
+          onClose={() => setChatOpen(false)}
+        />
+      </aside>
+      </div>
+
+      <SettingsDialog
+        openTab={settingsDialogTab}
+        user={authed ? activeUser : null}
+        preferences={preferences}
+        onTabChange={setSettingsDialogTab}
+        onUpdatePreferences={(patch) => {
+          updateUserPreferences(patch);
+        }}
+        onClose={handleCloseSettings}
+      />
+    </>
   );
 }

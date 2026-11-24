@@ -37,9 +37,13 @@ const CREATE_FN = {
     type: "OBJECT",
     properties: {
       title: { type: "STRING", description: "Itinerary title (e.g. Tokyo Trip)" },
-      daysCount: { type: "NUMBER", description: "Number of days, 1–14" },
+      daysCount: {
+        type: "NUMBER",
+        description:
+          "Number of days, 1–14. Omit if the user did not specify a length so the app's default is used.",
+      },
     },
-    required: ["title", "daysCount"],
+    required: ["title"],
   },
 };
 
@@ -91,6 +95,8 @@ export async function POST(req: Request) {
     itineraryCount?: number;
     activeItineraryId?: string;
     activeItineraryTitle?: string;
+    defaultDays?: number;
+    defaultPerDay?: number;
   } = body.context ?? {};
 
   // Build Gemini chat history (all messages except the last).
@@ -172,6 +178,9 @@ export async function POST(req: Request) {
           : " For ANY trip/itinerary intent: call create_itinerary only, then tell the user" +
             " to save and select some places before generating."),
 
+    "Omit daysCount in create_itinerary and perDay in generate_itinerary unless the user" +
+      " explicitly specifies a number, so the user's saved Settings defaults are used.",
+
     "If a function returns an error field, always relay that error message to the user exactly —" +
       " never assume success.",
 
@@ -249,9 +258,13 @@ function buildFallbackMessage(effects: ChatSideEffect[]): string {
   return "Done!";
 }
 
-async function executeFunction(name: string, args: Record<string, unknown>,userId: string | undefined,
-                              sideEffects: ChatSideEffect[], ctx: { selectedSavedCount?: number } = {} 
-                              ): Promise<Record<string, unknown>> {
+async function executeFunction(
+  name: string,
+  args: Record<string, unknown>,
+  userId: string | undefined,
+  sideEffects: ChatSideEffect[],
+  ctx: { selectedSavedCount?: number; defaultDays?: number; defaultPerDay?: number } = {}
+): Promise<Record<string, unknown>> {
   if (name === "search_city") {
     const city = String(args.city ?? "").trim();
     if (!city) return { error: "city is required" };
@@ -262,7 +275,11 @@ async function executeFunction(name: string, args: Record<string, unknown>,userI
   if (name === "create_itinerary") {
     if (!userId) return { error: "User is not signed in" };
     const title = String(args.title ?? "").trim();
-    const daysCount = Math.min(Math.max(Math.round(Number(args.daysCount) || 3), 1), 14);
+    const fallbackDays =
+      typeof ctx.defaultDays === "number" && Number.isFinite(ctx.defaultDays)
+        ? ctx.defaultDays
+        : 3;
+    const daysCount = Math.min(Math.max(Math.round(Number(args.daysCount) || fallbackDays), 1), 14);
     if (!title) return { error: "title is required" };
 
     try {
@@ -307,7 +324,11 @@ async function executeFunction(name: string, args: Record<string, unknown>,userI
       return { error: "None of your saved places have location coordinates and cannot be scheduled." };
     }
 
-    const perDay = Math.min(Math.max(Math.round(Number(args.perDay) || 3), 1), 8);
+    const fallbackPerDay =
+      typeof ctx.defaultPerDay === "number" && Number.isFinite(ctx.defaultPerDay)
+        ? ctx.defaultPerDay
+        : 3;
+    const perDay = Math.min(Math.max(Math.round(Number(args.perDay) || fallbackPerDay), 1), 8);
     const shuffle = Boolean(args.shuffle);
     const useSelected = (ctx.selectedSavedCount ?? 0) > 0;
 

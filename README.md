@@ -137,16 +137,26 @@ app/
   page.tsx                      ← Entry point — renders <SearchPanel>
   providers.tsx                 ← NextAuth <SessionProvider>
 components/
-  auth-button.tsx               ← GitHub sign in/out control
-  theme-toggle.tsx              ← Light/dark theme toggle (useSyncExternalStore)
+  theme-toggle.tsx              ← Light/dark theme toggle (synced with lib/theme.ts)
   ui/                           ← shadcn/ui primitives (Badge, Button, Card, Input, Separator)
   ui/explorer/
-    search-panel.tsx            ← Main single-page workspace UI & client state
+    app-sidebar.tsx             ← Collapsible left sidebar (section nav, trips switcher, & account dock)
+    account-dock.tsx            ← Bottom-left account profile avatar, sign-in dock, & floating popover menu
+    settings-dialog.tsx         ← Preferences modal (appearance, default trip days/stops) & Help/Shortcuts
+    search-panel.tsx            ← Main workspace orchestrator & client state
+    search-section.tsx          ← Discover places search, category filter chips, & results
+    saved-section.tsx           ← Saved shortlist, two-step Remove All confirm, & drag-resize
+    itinerary-section.tsx       ← Trip creation, day filter chips, & bounded scrollable day timeline
+    chat-panel.tsx              ← Slide-over Gemini Assistant drawer & starter prompt chips
+    category-badge.tsx          ← Category color badges (light + dark)
+    types.ts                    ← Shared explorer TypeScript types
 lib/
   auth.ts                       ← NextAuth config (GitHub provider + Prisma adapter)
   db.ts                         ← Prisma client singleton
   itinerary-routing.ts          ← Geographic clustering, nearest-neighbour, & 2-opt path optimizer
+  preferences.ts                ← LocalStorage-backed user preferences store (useSyncExternalStore)
   redis.ts                      ← Optional Redis client (2s connect timeout, graceful fallback)
+  theme.ts                      ← Shared light/dark/system theme store & live OS preference sync
 types/
   next-auth.d.ts                ← NextAuth Session user.id type augmentation
 prisma/
