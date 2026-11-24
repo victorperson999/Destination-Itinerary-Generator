@@ -112,11 +112,18 @@ export async function POST(req: Request) {
   const latNum = typeof lat === "number" ? lat : (typeof lat === "string" ? Number(lat) : null);
   const lonNum = typeof lon === "number" ? lon : (typeof lon === "string" ? Number(lon) : null);
 
+  const trimmedAddress = typeof address === "string" ? address.trim() : "";
+  const existingPlace = await prisma.place.findUnique({
+    where: { provider_providerId: { provider, providerId } },
+    select: { address: true },
+  });
+  const existingHasAddress = Boolean(existingPlace?.address?.trim());
+
   const place = await prisma.place.upsert({
     where: { provider_providerId: { provider, providerId } },
     update: { 
       name, 
-      address: address ?? null, 
+      ...(trimmedAddress && !existingHasAddress ? { address: trimmedAddress } : {}),
       category: category ?? null, 
       lat: Number.isFinite(latNum as number) ? (latNum as number) : null,
       lon: Number.isFinite(lonNum as number) ? (lonNum as number) : null,
@@ -125,7 +132,7 @@ export async function POST(req: Request) {
       provider,
       providerId,
       name,
-      address: address ?? null,
+      address: trimmedAddress || null,
       category: category ?? null,
       lat: Number.isFinite(latNum as number) ? (latNum as number) : null,
       lon: Number.isFinite(lonNum as number) ? (lonNum as number) : null,

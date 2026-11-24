@@ -266,40 +266,66 @@ export function AccountDock({
 
     if (isCompact) {
       return (
-        <div className="mt-auto flex shrink-0 justify-center border-t border-sidebar-border p-2">
+        <div className="mt-auto flex shrink-0 flex-col items-center gap-1 border-t border-sidebar-border/70 p-2">
+          <Button
+            ref={!isMobile ? desktopTriggerRef : undefined}
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="h-8 w-8 rounded-full text-muted-foreground hover:text-sidebar-foreground"
+            onClick={() => onOpenSettings("preferences", isMobile)}
+            aria-label="Open settings"
+            title="Settings"
+          >
+            <Settings size={15} strokeWidth={1.5} />
+          </Button>
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="h-9 w-9 rounded-full"
+            className="h-8 w-8 rounded-full text-muted-foreground hover:text-sidebar-foreground"
             onClick={() => void signIn("github")}
             aria-label="Sign in with GitHub"
             title="Sign in"
           >
-            <LogIn size={16} />
+            <LogIn size={15} strokeWidth={1.5} />
           </Button>
         </div>
       );
     }
 
     return (
-      <div className="mt-auto shrink-0 border-t border-sidebar-border p-2.5">
-        <div className="flex items-center gap-2.5 rounded-lg px-1.5 py-1">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-muted-foreground">
-            <User size={15} />
+      <div className="mt-auto shrink-0 border-t border-sidebar-border/70 p-2.5">
+        <div className="flex items-center gap-2 rounded-lg px-1 py-1">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sidebar-accent text-muted-foreground">
+            <User size={14} strokeWidth={1.5} />
           </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-medium text-sidebar-foreground">Guest</p>
             <p className="truncate text-[11px] text-muted-foreground">Not signed in</p>
           </div>
-          <Button
-            type="button"
-            size="sm"
-            className="h-7 shrink-0 px-2.5 text-xs"
-            onClick={() => void signIn("github")}
-          >
-            Sign in
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              ref={!isMobile ? desktopTriggerRef : undefined}
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              className="h-7 w-7 text-muted-foreground hover:text-sidebar-foreground"
+              onClick={() => onOpenSettings("preferences", isMobile)}
+              aria-label="Open settings"
+              title="Settings"
+            >
+              <Settings size={14} strokeWidth={1.5} />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-7 shrink-0 px-2.5 text-xs"
+              onClick={() => void signIn("github")}
+            >
+              Sign in
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -347,9 +373,9 @@ export function AccountDock({
         type="button"
         role="menuitem"
         onClick={() => handleSelectItem(() => onOpenSettings("preferences", isMobile))}
-        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none"
+        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none"
       >
-        <Settings size={15} className="shrink-0 text-muted-foreground" />
+        <Settings size={14} strokeWidth={1.5} className="shrink-0 text-muted-foreground" />
         <span>Settings</span>
       </button>
 
@@ -357,9 +383,9 @@ export function AccountDock({
         type="button"
         role="menuitem"
         onClick={() => handleSelectItem(() => onOpenSettings("help", isMobile))}
-        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none"
+        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-popover-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:bg-accent focus-visible:text-accent-foreground focus-visible:outline-none"
       >
-        <HelpCircle size={15} className="shrink-0 text-muted-foreground" />
+        <HelpCircle size={14} strokeWidth={1.5} className="shrink-0 text-muted-foreground" />
         <span>Help &amp; shortcuts</span>
       </button>
 
@@ -369,9 +395,9 @@ export function AccountDock({
         type="button"
         role="menuitem"
         onClick={() => handleSelectItem(() => void signOut())}
-        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10 focus-visible:bg-destructive/10 focus-visible:outline-none"
+        className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-[13px] text-destructive transition-colors hover:bg-destructive/10 focus-visible:bg-destructive/10 focus-visible:outline-none"
       >
-        <LogOut size={15} className="shrink-0" />
+        <LogOut size={14} strokeWidth={1.5} className="shrink-0" />
         <span>Log out</span>
       </button>
     </div>
@@ -379,7 +405,7 @@ export function AccountDock({
 
   return (
     <div
-      className={`relative mt-auto shrink-0 border-t border-sidebar-border ${
+      className={`relative mt-auto shrink-0 border-t border-sidebar-border/70 ${
         isCompact ? "flex justify-center p-2" : "p-2"
       }`}
     >
@@ -392,24 +418,24 @@ export function AccountDock({
         aria-controls={effectiveMenuOpen ? menuId : undefined}
         aria-label={isCompact ? `${displayName} account menu` : undefined}
         title={isCompact ? displayName : undefined}
-        className={`flex items-center rounded-lg text-left transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${
+        className={`flex items-center rounded-lg text-left transition-colors hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring ${
           isCompact
             ? "justify-center rounded-full p-0.5"
             : "w-full gap-2.5 px-2 py-1.5"
         }`}
       >
-        <UserAvatar user={user} />
+        <UserAvatar user={user} size={isCompact ? "md" : "sm"} />
         {!isCompact ? (
           <>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium leading-tight text-sidebar-foreground">
+              <p className="truncate text-[13px] font-medium leading-tight text-sidebar-foreground">
                 {displayName}
               </p>
               {email && email !== displayName ? (
                 <p className="truncate text-[11px] text-muted-foreground">{email}</p>
               ) : null}
             </div>
-            <ChevronsUpDown size={14} className="shrink-0 text-muted-foreground" />
+            <ChevronsUpDown size={14} strokeWidth={1.5} className="shrink-0 text-muted-foreground" />
           </>
         ) : null}
       </button>

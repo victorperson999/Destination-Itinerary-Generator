@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useSession, signIn } from "next-auth/react";
-import { MapPin, PanelLeft, Sparkles } from "lucide-react";
+import { PanelLeft, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import ThemeToggle from "@/components/theme-toggle";
+import { Separator } from "@/components/ui/separator";
 import { updateUserPreferences, useUserPreferences } from "@/lib/preferences";
 import { AppSidebar } from "./app-sidebar";
+import { BrandLogo } from "./brand-logo";
 import { SettingsDialog } from "./settings-dialog";
 import { SearchSection } from "./search-section";
 import { SavedSection } from "./saved-section";
@@ -158,7 +159,24 @@ async function generateItinerary(
   return (await res.json()) as { ok: boolean; count: number; items: ItineraryItem[] };
 }
 
+function subscribeDesktopMedia(callback: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+  const mq = window.matchMedia("(min-width: 1024px)");
+  mq.addEventListener("change", callback);
+  return () => mq.removeEventListener("change", callback);
+}
+
+function getIsDesktopSnapshot(): boolean {
+  return window.matchMedia("(min-width: 1024px)").matches;
+}
+
+function getIsDesktopServerSnapshot(): boolean {
+  return true;
+}
+
 // ── SearchPanel (Workspace Orchestrator) ──────────────────────────────────────
+
+const EMPTY_ITINERARY_ITEMS: ItineraryItem[] = [];
 
 export default function SearchPanel({
   initialUserId = null,
@@ -186,12 +204,37 @@ export default function SearchPanel({
   const [itineraries, setItineraries] = useState<Itinerary[]>(initialItineraries);
   const [itineraryId, setItineraryId] = useState<string | null>(initialItineraryId);
 
-  const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>(initialItineraryItems);
+  const [itineraryItemsState, setItineraryItemsState] = useState<{
+    forItineraryId: string | null;
+    items: ItineraryItem[];
+  }>({
+    forItineraryId: initialItineraryId,
+    items: initialItineraryItems,
+  });
   const [itinLoading, setItinLoading] = useState(false);
   const [itinError, setItinError] = useState<string | null>(null);
 
   const [itemsLoading, setItemsLoading] = useState(false);
-  const [itemsError, setItemsError] = useState<string | null>(null);
+  const [itemsErrorState, setItemsErrorState] = useState<{
+    forItineraryId: string;
+    message: string;
+  } | null>(null);
+
+  const itemsError =
+    itineraryId !== null && itemsErrorState?.forItineraryId === itineraryId
+      ? itemsErrorState.message
+      : null;
+  const itemsMatchCurrentItinerary =
+    itineraryId !== null && itineraryItemsState.forItineraryId === itineraryId;
+  const itineraryItems = itemsMatchCurrentItinerary
+    ? itineraryItemsState.items
+    : EMPTY_ITINERARY_ITEMS;
+  const effectiveItemsLoading =
+    itemsLoading || (itineraryId !== null && !itemsMatchCurrentItinerary && !itemsError);
+  const syncedItemCount =
+    itemsMatchCurrentItinerary && !itemsLoading && !itemsError
+      ? itineraryItems.length
+      : null;
 
   const [creatingItin, setCreatingItin] = useState(false);
   const [deletingItinId, setDeletingItinId] = useState<string | null>(null);
@@ -213,10 +256,22 @@ export default function SearchPanel({
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
 
+  const isDesktop = useSyncExternalStore(
+    subscribeDesktopMedia,
+    getIsDesktopSnapshot,
+    getIsDesktopServerSnapshot
+  );
+
+  const workspaceContainerRef = useRef<HTMLDivElement | null>(null);
   const newTitleInputRef = useRef<HTMLInputElement | null>(null);
   const mobileSidebarTriggerRef = useRef<HTMLButtonElement | null>(null);
   const desktopAccountTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const assistantTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const assistantAsideRef = useRef<HTMLElement | null>(null);
+  const assistantCloseBtnRef = useRef<HTMLButtonElement | null>(null);
   const prevMobileSidebarOpenRef = useRef(false);
+  const prevChatOpenRef = useRef(false);
+  const prevAssistantModalRef = useRef(false);
   const skipMobileFocusRestoreRef = useRef(false);
   const activeUserIdRef = useRef<string | null>(initialUserId);
   const itinerariesRef = useRef<Itinerary[]>(initialItineraries);
@@ -300,6 +355,33 @@ export default function SearchPanel({
   }, [mobileSidebarOpen]);
 
   useEffect(() => {
+    const wasOpen = prevChatOpenRef.current;
+    const wasModal = prevAssistantModalRef.current;
+    const isModal = chatOpen && !isDesktop;
+    prevChatOpenRef.current = chatOpen;
+    prevAssistantModalRef.current = isModal;
+
+    if (!wasModal && isModal) {
+      const rafId = requestAnimationFrame(() => {
+        if (!assistantAsideRef.current?.contains(document.activeElement)) {
+          assistantCloseBtnRef.current?.focus();
+        }
+      });
+      return () => cancelAnimationFrame(rafId);
+    }
+
+    if (wasOpen && !chatOpen) {
+      const activeEl = document.activeElement;
+      if (
+        assistantAsideRef.current?.contains(activeEl) ||
+        activeEl === document.body
+      ) {
+        assistantTriggerRef.current?.focus({ preventScroll: true });
+      }
+    }
+  }, [chatOpen, isDesktop]);
+
+  useEffect(() => {
     return () => {
       searchAbortRef.current?.abort();
       clearTitleErrorTimer();
@@ -311,12 +393,19 @@ export default function SearchPanel({
     if (!chatOpen && !mobileSidebarOpen) return;
     function onKeyDown(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
-      if (chatOpen) setChatOpen(false);
-      else if (mobileSidebarOpen) setMobileSidebarOpen(false);
+      if (chatOpen) {
+        // On desktop push-pane mode, only close Assistant on Escape when focus is inside it
+        // so workspace interactions in <main> aren't interrupted by a layout reflow.
+        if (!isDesktop || assistantAsideRef.current?.contains(document.activeElement)) {
+          setChatOpen(false);
+        }
+      } else if (mobileSidebarOpen) {
+        setMobileSidebarOpen(false);
+      }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [chatOpen, mobileSidebarOpen, settingsDialogTab]);
+  }, [chatOpen, mobileSidebarOpen, settingsDialogTab, isDesktop]);
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 1024px)");
@@ -475,10 +564,10 @@ export default function SearchPanel({
         itineraryIdRef.current = null;
         setItineraries([]);
         setItineraryId(null);
-        setItineraryItems([]);
+        setItineraryItemsState({ forItineraryId: null, items: EMPTY_ITINERARY_ITEMS });
         setItinError(null);
         setSidebarError(null);
-        setItemsError(null);
+        setItemsErrorState(null);
         setItinLoading(false);
         setItemsLoading(false);
         return;
@@ -527,8 +616,8 @@ export default function SearchPanel({
       if (status === "loading") return;
       if (!activeUserId || !itineraryId) {
         loadedItemsKeyRef.current = null;
-        setItineraryItems([]);
-        setItemsError(null);
+        setItineraryItemsState({ forItineraryId: null, items: EMPTY_ITINERARY_ITEMS });
+        setItemsErrorState(null);
         setItemsLoading(false);
         return;
       }
@@ -536,22 +625,25 @@ export default function SearchPanel({
       const itemsKey = `${activeUserId}:${itineraryId}`;
       if (loadedItemsKeyRef.current === itemsKey) {
         setItemsLoading(false);
-        setItemsError(null);
+        setItemsErrorState(null);
         return;
       }
 
       const reqId = ++itemsFetchReqIdRef.current;
       try {
         setItemsLoading(true);
-        setItemsError(null);
+        setItemsErrorState(null);
         const items = await fetchItineraryItems(itineraryId);
         if (!cancelled && itemsFetchReqIdRef.current === reqId) {
           loadedItemsKeyRef.current = itemsKey;
-          setItineraryItems(items);
+          setItineraryItemsState({ forItineraryId: itineraryId, items });
         }
       } catch (e) {
         if (!cancelled && itemsFetchReqIdRef.current === reqId) {
-          setItemsError(e instanceof Error ? e.message : "Failed to load itinerary items");
+          setItemsErrorState({
+            forItineraryId: itineraryId,
+            message: e instanceof Error ? e.message : "Failed to load itinerary items",
+          });
         }
       } finally {
         if (!cancelled && itemsFetchReqIdRef.current === reqId) setItemsLoading(false);
@@ -831,7 +923,7 @@ export default function SearchPanel({
 
     try {
       setGenerating(true);
-      setItemsError(null);
+      setItemsErrorState(null);
 
       const generated = await generateItinerary(targetId, {
         mode: "replace",
@@ -844,14 +936,17 @@ export default function SearchPanel({
         itemsFetchReqIdRef.current++;
         loadedItemsKeyRef.current = targetKey;
         setItemsLoading(false);
-        setItemsError(null);
-        setItineraryItems(generated.items);
+        setItemsErrorState(null);
+        setItineraryItemsState({ forItineraryId: targetId, items: generated.items });
       } else if (loadedItemsKeyRef.current === targetKey) {
         loadedItemsKeyRef.current = null;
       }
     } catch (e) {
       if (activeItemsKeyRef.current === targetKey) {
-        setItemsError(e instanceof Error ? e.message : "Failed to generate itinerary");
+        setItemsErrorState({
+          forItineraryId: targetId,
+          message: e instanceof Error ? e.message : "Failed to generate itinerary",
+        });
       }
     } finally {
       setGenerating(false);
@@ -933,8 +1028,8 @@ export default function SearchPanel({
             itemsFetchReqIdRef.current++;
             loadedItemsKeyRef.current = activeUserId ? `${activeUserId}:${effect.itineraryId}` : null;
             setItemsLoading(false);
-            setItemsError(null);
-            setItineraryItems(generated.items);
+            setItemsErrorState(null);
+            setItineraryItemsState({ forItineraryId: effect.itineraryId, items: generated.items });
             itineraryIdRef.current = effect.itineraryId;
             setItineraryId(effect.itineraryId);
             if (deferredSelectId === effect.itineraryId) {
@@ -994,7 +1089,7 @@ export default function SearchPanel({
           itineraries={itineraries}
           itineraryId={itineraryId}
           savedCount={saved.length}
-          itineraryItemCount={itemsLoading || itemsError ? null : itineraryItems.length}
+          itineraryItemCount={syncedItemCount}
           deletingItinId={deletingItinId}
           sidebarError={sidebarError}
           collapsed={sidebarCollapsed}
@@ -1015,10 +1110,16 @@ export default function SearchPanel({
           onOpenSettings={handleOpenSettings}
         />
 
-      <main inert={mobileSidebarOpen} className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-7">
-        <div className="mx-auto w-full max-w-6xl space-y-5">
+      <main
+        inert={mobileSidebarOpen || (chatOpen && !isDesktop)}
+        className="min-w-0 flex-1 px-4 py-5 sm:px-6 sm:py-7"
+      >
+        <div
+          ref={workspaceContainerRef}
+          className="@container/workspace mx-auto w-full max-w-6xl space-y-6"
+        >
           {/* Top Workspace Bar */}
-          <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <header className="flex flex-col gap-3 border-b border-border/60 pb-4 @min-[520px]/workspace:flex-row @min-[520px]/workspace:items-center @min-[520px]/workspace:justify-between">
             <div className="flex min-w-0 items-center gap-2.5">
               <Button
                 ref={mobileSidebarTriggerRef}
@@ -1031,48 +1132,85 @@ export default function SearchPanel({
                 aria-expanded={mobileSidebarOpen}
                 aria-controls="mobile-sidebar"
               >
-                <PanelLeft size={16} />
+                <PanelLeft size={15} strokeWidth={1.5} />
               </Button>
 
               {/* Brand lockup shown on mobile (< lg); desktop brand lives in the sidebar */}
               <div className="flex min-w-0 items-center gap-2.5 lg:hidden">
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
-                  <MapPin size={18} />
-                </span>
+                <BrandLogo size={20} className="text-primary" />
                 <div className="min-w-0">
-                  <h1 className="truncate text-lg font-semibold tracking-tight">Local Explorer</h1>
+                  <h1 className="truncate text-base font-semibold tracking-tight">
+                    Local <span className="font-normal text-muted-foreground">Explorer</span>
+                  </h1>
                   <p className="truncate text-xs text-muted-foreground">
-                    Discover attractions and plan itineraries.
+                    {selectedItinerary
+                      ? `Current itinerary: ${selectedItinerary.title}`
+                      : "Discover attractions and plan itineraries."}
                   </p>
                 </div>
               </div>
 
               {/* Desktop context heading */}
               <div className="hidden min-w-0 lg:block">
-                <h1 className="truncate text-xl font-semibold tracking-tight">
+                <p className="truncate text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  {selectedItinerary ? (
+                    <>
+                      Current Itinerary
+                      <span className="mx-1.5 opacity-50" aria-hidden="true">
+                        ·
+                      </span>
+                      <span className="tabular-nums">
+                        {selectedItinerary.daysCount}{" "}
+                        {selectedItinerary.daysCount === 1 ? "day" : "days"}
+                      </span>
+                      {syncedItemCount !== null ? (
+                        <>
+                          <span className="mx-1.5 opacity-50" aria-hidden="true">
+                            ·
+                          </span>
+                          <span className="tabular-nums">
+                            {syncedItemCount} {syncedItemCount === 1 ? "stop" : "stops"}
+                          </span>
+                        </>
+                      ) : null}
+                    </>
+                  ) : (
+                    "Workspace"
+                  )}
+                </p>
+                <h1 className="mt-0.5 truncate text-lg font-semibold tracking-tight text-foreground">
                   {selectedItinerary ? selectedItinerary.title : "Explore & Plan"}
                 </h1>
-                <p className="truncate text-xs text-muted-foreground">
-                  {selectedItinerary
-                    ? `${selectedItinerary.daysCount} ${selectedItinerary.daysCount === 1 ? "day" : "days"} · Discover attractions and organize your schedule.`
-                    : "Discover attractions and build day-by-day itineraries."}
-                </p>
+                {!selectedItinerary ? (
+                  <p className="truncate text-xs text-muted-foreground">
+                    Discover attractions and build day-by-day itineraries.
+                  </p>
+                ) : null}
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            <div className="flex flex-wrap items-center gap-2 @min-[520px]/workspace:shrink-0">
               <Button
+                ref={assistantTriggerRef}
                 type="button"
-                variant={chatOpen ? "default" : "outline"}
+                variant="ghost"
                 size="sm"
                 onClick={handleToggleChat}
                 aria-expanded={chatOpen}
                 aria-controls="assistant-drawer"
+                className={
+                  chatOpen
+                    ? "rounded-lg border border-primary/40 bg-primary/12 text-xs text-foreground hover:bg-primary/18 hover:text-foreground dark:bg-primary/15 dark:hover:bg-primary/22"
+                    : "rounded-lg border border-border/70 bg-transparent text-xs text-muted-foreground hover:border-border hover:bg-accent/50 hover:text-foreground"
+                }
               >
-                <Sparkles size={14} />
+                <Sparkles
+                  size={13}
+                  strokeWidth={1.5}
+                  className={chatOpen ? "text-primary" : "text-muted-foreground"}
+                />
                 Assistant
               </Button>
-              <ThemeToggle />
               {!authed && status !== "loading" ? (
                 <Button
                   type="button"
@@ -1086,7 +1224,7 @@ export default function SearchPanel({
             </div>
           </header>
 
-          {/* Row 1: Full-width Discover Places */}
+          {/* Row 1: Frameless Discover Places */}
           <SearchSection
             query={query}
             searchedQuery={searchedQuery}
@@ -1101,8 +1239,10 @@ export default function SearchPanel({
             onSave={handleSavePlace}
           />
 
-          {/* Row 2: Matched-height Saved (left) + Itinerary (right) */}
-          <div className="grid grid-cols-1 items-stretch gap-5 xl:grid-cols-12">
+          <Separator className="bg-border/60" />
+
+          {/* Row 2: Container-responsive Saved (left) + Itinerary (right) */}
+          <div className="grid grid-cols-1 items-stretch gap-6 @min-[900px]/workspace:grid-cols-12">
             <SavedSection
               authed={authed}
               saved={saved}
@@ -1111,6 +1251,7 @@ export default function SearchPanel({
               activeSelectedSavedIds={activeSelectedSavedIds}
               selectedSavedCount={selectedSavedCount}
               savingKey={savingKey}
+              workspaceContainerRef={workspaceContainerRef}
               onToggleSelect={toggleSavedSelection}
               onSelectAll={selectAllSaved}
               onClearSelected={clearSelectedSaved}
@@ -1127,7 +1268,7 @@ export default function SearchPanel({
               itemsByDay={itemsByDay}
               itinLoading={itinLoading}
               itinError={itinError}
-              itemsLoading={itemsLoading}
+              itemsLoading={effectiveItemsLoading}
               itemsError={itemsError}
               creatingItin={creatingItin}
               generating={generating}
@@ -1163,36 +1304,73 @@ export default function SearchPanel({
         </div>
       </main>
 
-      {/* Mobile backdrop when Assistant drawer is open */}
-      {chatOpen ? (
+      {/* Desktop push-layout Assistant pane (lg+); CSS-gated so crossing 1024px never flashes */}
+      <aside
+        ref={isDesktop ? assistantAsideRef : undefined}
+        id={isDesktop ? "assistant-drawer" : undefined}
+        aria-label="AI Assistant"
+        inert={!chatOpen || !isDesktop}
+        aria-hidden={!chatOpen || !isDesktop}
+        className={`sticky top-0 hidden h-dvh shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-foreground transition-[width,border-color] duration-200 lg:flex ${
+          chatOpen
+            ? "w-80 border-l border-sidebar-border/70 xl:w-[340px]"
+            : "w-0 border-l-0 border-transparent"
+        }`}
+      >
+        {isDesktop ? (
+          <div className="flex h-full w-80 flex-col p-4 xl:w-[340px]">
+            <ChatPanel
+              messages={messages}
+              input={chatInput}
+              loading={chatLoading}
+              authed={authed}
+              savedCount={saved.length}
+              hasActiveItinerary={Boolean(itineraryId)}
+              closeBtnRef={assistantCloseBtnRef}
+              onInputChange={setChatInput}
+              onSend={(text) => void handleChatSend(text)}
+              onClose={() => setChatOpen(false)}
+            />
+          </div>
+        ) : null}
+      </aside>
+
+      {/* Mobile backdrop when Assistant overlay is open (< lg) */}
+      {chatOpen && !isDesktop ? (
         <div
           aria-hidden="true"
           onClick={() => setChatOpen(false)}
-          className="fixed inset-0 z-40 bg-black/40 sm:hidden"
+          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
         />
       ) : null}
 
-      {/* Non-blocking right slide-over Assistant drawer */}
+      {/* Mobile slide-over Assistant dialog (< lg) */}
       <aside
-        id="assistant-drawer"
+        ref={!isDesktop ? assistantAsideRef : undefined}
+        id={!isDesktop ? "assistant-drawer" : undefined}
+        role={chatOpen && !isDesktop ? "dialog" : undefined}
+        aria-modal={chatOpen && !isDesktop ? true : undefined}
         aria-label="AI Assistant"
-        inert={!chatOpen}
-        aria-hidden={!chatOpen}
-        className={`fixed inset-y-0 right-0 z-50 w-full max-w-sm border-l bg-card p-4 shadow-2xl transition-transform duration-200 ease-out ${
+        inert={!chatOpen || isDesktop}
+        aria-hidden={!chatOpen || isDesktop}
+        className={`fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col border-l border-sidebar-border bg-sidebar p-4 text-sidebar-foreground shadow-2xl transition-transform duration-200 ease-out lg:hidden ${
           chatOpen ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        <ChatPanel
-          messages={messages}
-          input={chatInput}
-          loading={chatLoading}
-          authed={authed}
-          savedCount={saved.length}
-          hasActiveItinerary={Boolean(itineraryId)}
-          onInputChange={setChatInput}
-          onSend={(text) => void handleChatSend(text)}
-          onClose={() => setChatOpen(false)}
-        />
+        {!isDesktop ? (
+          <ChatPanel
+            messages={messages}
+            input={chatInput}
+            loading={chatLoading}
+            authed={authed}
+            savedCount={saved.length}
+            hasActiveItinerary={Boolean(itineraryId)}
+            closeBtnRef={assistantCloseBtnRef}
+            onInputChange={setChatInput}
+            onSend={(text) => void handleChatSend(text)}
+            onClose={() => setChatOpen(false)}
+          />
+        ) : null}
       </aside>
       </div>
 

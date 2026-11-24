@@ -1,10 +1,10 @@
 "use client";
 
 import { type RefObject, useRef, useState } from "react";
-import { CalendarDays } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowUpRight, CalendarDays } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { buildGoogleMapsDayRouteUrl, buildGoogleMapsPlaceUrl } from "@/lib/maps-links";
 import { CategoryBadge } from "./category-badge";
 import type { Itinerary, ItineraryItem } from "./types";
 
@@ -91,21 +91,22 @@ export function ItinerarySection({
   }
 
   return (
-    <Card id="itinerary" className="flex min-w-0 scroll-mt-6 flex-col gap-4 py-5 xl:col-span-7">
-      <CardHeader className="px-5">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <CalendarDays size={16} className="text-primary" />
-            Itinerary
-          </CardTitle>
-          {itinLoading ? <span className="text-xs text-muted-foreground">Syncing…</span> : null}
-        </div>
-      </CardHeader>
+    <section
+      id="itinerary"
+      className="flex min-w-0 scroll-mt-6 flex-col gap-3.5 @min-[900px]/workspace:col-span-7 @min-[900px]/workspace:border-l @min-[900px]/workspace:border-border/60 @min-[900px]/workspace:pl-6"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-[13px] font-medium tracking-tight text-foreground">
+          <CalendarDays size={15} strokeWidth={1.5} className="text-muted-foreground" />
+          Itinerary
+        </h2>
+        {itinLoading ? <span className="text-xs text-muted-foreground">Syncing…</span> : null}
+      </div>
 
-      <CardContent className="flex min-w-0 flex-1 flex-col space-y-4 px-5">
+      <div className="flex min-w-0 flex-1 flex-col space-y-4">
         {!authed ? (
-          <div className="rounded-lg border border-dashed px-4 py-8 text-center">
-            <p className="text-sm font-medium text-foreground/80">
+          <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center">
+            <p className="text-sm font-medium text-foreground/85">
               Sign in to create and generate itineraries
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -113,7 +114,7 @@ export function ItinerarySection({
             </p>
           </div>
         ) : (
-          <div className="flex min-w-0 flex-1 flex-col space-y-4">
+          <div className="flex min-w-0 flex-1 flex-col space-y-3.5">
             {itinError ? (
               <div
                 role="alert"
@@ -125,7 +126,7 @@ export function ItinerarySection({
 
             {/* Create itinerary bar */}
             <div className="space-y-1.5">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-2 @min-[520px]/workspace:flex-row @min-[520px]/workspace:items-center">
                 <Input
                   ref={newTitleInputRef}
                   value={newItinTitle}
@@ -138,7 +139,7 @@ export function ItinerarySection({
                     }
                   }}
                 />
-                <div className="flex items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2">
                   <label
                     htmlFor="new-itinerary-days"
                     className="whitespace-nowrap text-xs font-medium text-muted-foreground"
@@ -153,7 +154,7 @@ export function ItinerarySection({
                     value={newDaysInput}
                     onChange={(e) => onNewDaysChange(e.target.value)}
                     onBlur={onNewDaysBlur}
-                    className="w-20"
+                    className="w-18"
                     aria-label="Number of days"
                   />
                   <Button
@@ -172,16 +173,16 @@ export function ItinerarySection({
               ) : null}
             </div>
 
-            {/* Pick + Generate toolbar */}
+            {/* Flat Pick + Generate toolbar */}
             {itineraries.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No itineraries yet. Create your first trip above.
               </p>
             ) : (
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-2.5">
+              <div className="flex flex-wrap items-center gap-2 border-b border-border/50 pb-3">
                 <select
                   aria-label="Active itinerary"
-                  className="h-9 min-w-44 flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground shadow-xs outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="h-8 min-w-44 flex-1 rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   value={itineraryId ?? ""}
                   onChange={(e) => {
                     onSelectItinerary(e.target.value);
@@ -201,21 +202,22 @@ export function ItinerarySection({
                   ))}
                 </select>
 
-                <label className="flex cursor-pointer items-center gap-1.5 px-1 text-sm">
+                <label className="flex cursor-pointer items-center gap-1.5 px-1 text-xs text-muted-foreground hover:text-foreground">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 cursor-pointer rounded accent-primary"
+                    className="h-3.5 w-3.5 cursor-pointer rounded accent-primary"
                     checked={genShuffle}
                     onChange={(e) => onToggleShuffle(e.target.checked)}
                   />
                   Shuffle
                 </label>
 
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex flex-wrap items-center gap-1.5">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="h-8 border-border/70 text-xs"
                     disabled={!itineraryId || generating}
                     onClick={() => void onGenerateAll()}
                   >
@@ -225,6 +227,7 @@ export function ItinerarySection({
                   <Button
                     type="button"
                     size="sm"
+                    className="h-8 text-xs"
                     disabled={!itineraryId || generating || selectedSavedCount === 0}
                     onClick={() => void onGenerateSelected()}
                   >
@@ -234,17 +237,15 @@ export function ItinerarySection({
               </div>
             )}
 
-            {/* Day cards */}
+            {/* Day timeline */}
             {itemsLoading ? (
-              <div className="space-y-3" aria-label="Loading itinerary items">
+              <div className="space-y-4" aria-label="Loading itinerary items">
                 {Array.from({ length: 2 }, (_, i) => (
-                  <div key={i} className="overflow-hidden rounded-lg border">
-                    <div className="border-b bg-accent/30 px-3 py-2">
-                      <div className="h-4 w-20 animate-pulse rounded bg-muted" />
-                    </div>
-                    <div className="space-y-3 p-3">
-                      <div className="h-4 w-3/5 animate-pulse rounded bg-muted" />
-                      <div className="h-4 w-2/5 animate-pulse rounded bg-muted" />
+                  <div key={i} className="space-y-2.5 border-b border-border/50 pb-4 last:border-b-0">
+                    <div className="h-3.5 w-20 animate-pulse rounded bg-muted/70" />
+                    <div className="space-y-2 pl-2">
+                      <div className="h-3.5 w-3/5 animate-pulse rounded bg-muted/70" />
+                      <div className="h-3.5 w-2/5 animate-pulse rounded bg-muted/50" />
                     </div>
                   </div>
                 ))}
@@ -261,8 +262,8 @@ export function ItinerarySection({
                 <p className="text-sm text-muted-foreground">Select an itinerary to view stops.</p>
               ) : null
             ) : itineraryItems.length === 0 ? (
-              <div className="rounded-lg border border-dashed px-4 py-8 text-center">
-                <p className="text-sm font-medium text-foreground/80">No stops scheduled yet</p>
+              <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center">
+                <p className="text-sm font-medium text-foreground/85">No stops scheduled yet</p>
                 <p className="mt-1 text-xs text-muted-foreground">
                   Click <span className="font-medium text-foreground">Generate (all saved)</span> or{" "}
                   <span className="font-medium text-foreground">Generate (selected)</span> to build your schedule.
@@ -274,19 +275,28 @@ export function ItinerarySection({
                   <div
                     role="group"
                     aria-label="Filter itinerary by day"
-                    className="flex items-center gap-1.5 overflow-x-auto pb-0.5"
+                    className="flex items-center gap-1 overflow-x-auto pb-0.5"
                   >
                     <button
                       type="button"
                       aria-pressed={activeDay === "all"}
                       onClick={() => handleSelectDay("all")}
-                      className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                      className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                         activeDay === "all"
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                          ? "bg-sidebar-accent/90 text-foreground ring-1 ring-inset ring-border/70"
+                          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                       }`}
                     >
-                      All days ({itineraryItems.length})
+                      All days
+                      <span
+                        className={`ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums ${
+                          activeDay === "all"
+                            ? "bg-foreground/10 text-foreground"
+                            : "bg-muted/80 text-muted-foreground"
+                        }`}
+                      >
+                        {itineraryItems.length}
+                      </span>
                     </button>
                     {Array.from({ length: daysCount }, (_, day) => {
                       const count = (itemsByDay.get(day) ?? []).length;
@@ -297,19 +307,19 @@ export function ItinerarySection({
                           type="button"
                           aria-pressed={selected}
                           onClick={() => handleSelectDay(day)}
-                          className={`shrink-0 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                          className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
                             selected
-                              ? "border-primary bg-primary text-primary-foreground"
-                              : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                              ? "bg-sidebar-accent/90 text-foreground ring-1 ring-inset ring-border/70"
+                              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
                           }`}
                         >
                           <span>Day {day + 1}</span>
                           {count > 0 ? (
                             <span
-                              className={`ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold ${
+                              className={`ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-semibold tabular-nums ${
                                 selected
-                                  ? "bg-primary-foreground/20 text-primary-foreground"
-                                  : "bg-muted text-muted-foreground"
+                                  ? "bg-foreground/10 text-foreground"
+                                  : "bg-muted/80 text-muted-foreground"
                               }`}
                             >
                               {count}
@@ -323,27 +333,61 @@ export function ItinerarySection({
 
                 <div
                   ref={dayListScrollRef}
-                  className="max-h-[420px] space-y-3 overflow-y-auto pr-1"
+                  className="max-h-[420px] space-y-4 overflow-y-auto pt-0.5 pr-1"
                 >
                   {visibleDays.map((day) => {
                     const dayItems = itemsByDay.get(day) ?? [];
+                    const dayRoute = buildGoogleMapsDayRouteUrl(
+                      dayItems.map((it) => ({
+                        name: it.place.name,
+                        address: it.place.address,
+                        lat: it.place.lat,
+                        lon: it.place.lon,
+                      }))
+                    );
+                    const routeLabel = dayRoute?.truncated
+                      ? `Open Day ${day + 1} route in Google Maps (capped at ${dayRoute.includedStops} of ${dayRoute.totalStops} stops)`
+                      : `Open Day ${day + 1} route in Google Maps`;
                     return (
-                      <div key={day} className="overflow-hidden rounded-lg border">
-                        <div className="flex items-center gap-2 border-b bg-accent/40 px-3.5 py-2 text-sm font-semibold">
-                          <CalendarDays size={14} className="text-primary" />
+                      <div key={day} className="space-y-2.5">
+                        <div className="flex items-center gap-2 border-b border-border/50 pb-1.5 text-xs font-medium text-foreground">
+                          <CalendarDays size={13} strokeWidth={1.5} className="text-muted-foreground" />
                           <span>Day {day + 1}</span>
-                          <span className="ml-auto text-xs font-normal text-muted-foreground">
-                            {dayItems.length} {dayItems.length === 1 ? "stop" : "stops"}
-                          </span>
+                          <div className="ml-auto flex items-center gap-2.5">
+                            {dayRoute ? (
+                              <a
+                                href={dayRoute.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label={`${routeLabel} (opens in a new tab)`}
+                                title={routeLabel}
+                                className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-primary hover:underline focus-visible:rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                Route
+                                <ArrowUpRight size={11} strokeWidth={1.5} aria-hidden="true" />
+                              </a>
+                            ) : null}
+                            <span className="font-normal tabular-nums text-muted-foreground">
+                              {dayItems.length} {dayItems.length === 1 ? "stop" : "stops"}
+                            </span>
+                          </div>
                         </div>
-                        <div className="p-3.5">
+                        <div className="pl-0.5">
                           {dayItems.length === 0 ? (
-                            <p className="text-xs text-muted-foreground">No stops planned for this day.</p>
+                            <p className="py-1 text-xs text-muted-foreground">
+                              No stops planned for this day.
+                            </p>
                           ) : (
                             <ul>
                               {dayItems.map((it, idx) => {
                                 const address = it.place.address?.trim();
                                 const isLast = idx === dayItems.length - 1;
+                                const mapsUrl = buildGoogleMapsPlaceUrl({
+                                  name: it.place.name,
+                                  address,
+                                  lat: it.place.lat,
+                                  lon: it.place.lon,
+                                });
                                 return (
                                   <li
                                     key={it.id}
@@ -352,18 +396,36 @@ export function ItinerarySection({
                                     {!isLast ? (
                                       <span
                                         aria-hidden="true"
-                                        className="absolute top-6 bottom-0 left-3 w-px -translate-x-1/2 bg-border"
+                                        className="absolute top-[26px] bottom-0 left-3 w-px -translate-x-1/2 bg-border/70"
                                       />
                                     ) : null}
                                     <div className="flex min-w-0 items-start gap-3">
-                                      <span className="relative z-10 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground shadow-xs">
+                                      <span className="relative z-10 mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-medium tabular-nums text-foreground ring-1 ring-inset ring-primary/30">
                                         {idx + 1}
                                       </span>
                                       <div className="min-w-0">
-                                        <p className="font-medium leading-snug">{it.place.name}</p>
-                                        {address ? (
-                                          <p className="text-xs text-muted-foreground">{address}</p>
-                                        ) : null}
+                                        {mapsUrl ? (
+                                          <a
+                                            href={mapsUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            title={`Open ${it.place.name} in Google Maps`}
+                                            aria-label={`${it.place.name} — open in Google Maps (opens in a new tab)`}
+                                            className="group/link inline-flex max-w-full items-start gap-1 text-sm font-medium leading-snug text-foreground underline-offset-2 transition-colors hover:text-primary hover:underline focus-visible:rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                          >
+                                            <span>{it.place.name}</span>
+                                            <ArrowUpRight
+                                              size={12}
+                                              strokeWidth={1.5}
+                                              aria-hidden="true"
+                                              className="mt-1 shrink-0 text-muted-foreground/60 transition-colors group-hover/link:text-primary"
+                                            />
+                                          </a>
+                                        ) : (
+                                          <p className="text-sm font-medium leading-snug text-foreground">
+                                            {it.place.name}
+                                          </p>
+                                        )}
                                         {it.note ? (
                                           <p className="mt-0.5 text-xs italic text-muted-foreground">
                                             {it.note}
@@ -386,7 +448,7 @@ export function ItinerarySection({
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

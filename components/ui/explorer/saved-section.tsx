@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Bookmark } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { type RefObject, useEffect, useRef, useState } from "react";
+import { ArrowUpRight, Bookmark, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { buildGoogleMapsPlaceUrl } from "@/lib/maps-links";
 import { CategoryBadge } from "./category-badge";
 import type { SavedItem } from "./types";
 
 const SAVED_MIN_HEIGHT = 256;
+const SPLIT_WORKSPACE_WIDTH = 900;
 
 type SavedSectionProps = {
   authed: boolean;
@@ -17,6 +18,7 @@ type SavedSectionProps = {
   activeSelectedSavedIds: Set<string>;
   selectedSavedCount: number;
   savingKey: string | null;
+  workspaceContainerRef: RefObject<HTMLDivElement | null>;
   onToggleSelect: (placeId: string) => void;
   onSelectAll: () => void;
   onClearSelected: () => void;
@@ -32,6 +34,7 @@ export function SavedSection({
   activeSelectedSavedIds,
   selectedSavedCount,
   savingKey,
+  workspaceContainerRef,
   onToggleSelect,
   onSelectAll,
   onClearSelected,
@@ -54,18 +57,38 @@ export function SavedSection({
     }
   }
 
+  // Sync drag-resize state with the unpadded @container/workspace width so crossing into
+  // side-by-side mode (>= 900px) clears any stale inline height, and stacked width changes
+  // clear height if the list naturally fits <= SAVED_MIN_HEIGHT.
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1280px)");
-    function handleChange(e: MediaQueryListEvent) {
-      if (e.matches) {
+    const containerEl = workspaceContainerRef.current;
+    if (!containerEl || typeof ResizeObserver === "undefined") return;
+
+    let wasWide = containerEl.getBoundingClientRect().width >= SPLIT_WORKSPACE_WIDTH;
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const width = entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width;
+      const isWide = width >= SPLIT_WORKSPACE_WIDTH;
+
+      if (!wasWide && isWide) {
         dragCleanupRef.current?.();
         setSavedHeight(null);
         setSavedAtMax(false);
+      } else if (!isWide) {
+        const listHeight = savedListRef.current?.offsetHeight ?? 0;
+        if (listHeight > 0 && listHeight <= SAVED_MIN_HEIGHT) {
+          setSavedHeight(null);
+          setSavedAtMax(false);
+        }
       }
-    }
-    mq.addEventListener("change", handleChange);
-    return () => mq.removeEventListener("change", handleChange);
-  }, []);
+      wasWide = isWide;
+    });
+
+    observer.observe(containerEl);
+    return () => observer.disconnect();
+  }, [workspaceContainerRef]);
 
   useEffect(() => {
     return () => {
@@ -173,24 +196,29 @@ export function SavedSection({
     confirmingRemoveAll && authed && saved.length > 0 && savingKey !== "remove-all";
 
   return (
-    <Card id="saved" className="flex min-w-0 scroll-mt-6 flex-col gap-4 py-5 xl:col-span-5">
-      <CardHeader className="gap-3 px-5">
+    <section
+      id="saved"
+      className="@container/saved flex min-w-0 scroll-mt-6 flex-col gap-3 @min-[900px]/workspace:col-span-5"
+    >
+      {/* Header + Toolbar */}
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Bookmark size={16} className="text-primary" />
+          <h2 className="flex items-center gap-2 text-[13px] font-medium tracking-tight text-foreground">
+            <Bookmark size={15} strokeWidth={1.5} className="text-muted-foreground" />
             Saved
-            <span className="text-xs font-normal text-muted-foreground">
-              ({selectedSavedCount}/{saved.length} selected)
+            <span className="text-xs font-normal tabular-nums text-muted-foreground">
+              {selectedSavedCount}/{saved.length} selected
             </span>
-          </CardTitle>
+          </h2>
         </div>
 
         {authed ? (
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1">
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="ghost"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
               disabled={saved.length === 0}
               onClick={onSelectAll}
             >
@@ -200,7 +228,8 @@ export function SavedSection({
             <Button
               type="button"
               size="sm"
-              variant="outline"
+              variant="ghost"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
               disabled={selectedSavedCount === 0}
               onClick={onClearSelected}
             >
@@ -213,6 +242,7 @@ export function SavedSection({
                   type="button"
                   size="sm"
                   variant="destructive"
+                  className="h-7 px-2.5 text-xs"
                   onClick={() => void confirmRemoveAll()}
                 >
                   Confirm?
@@ -220,7 +250,8 @@ export function SavedSection({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="ghost"
+                  className="h-7 px-2 text-xs"
                   onClick={cancelRemoveAllConfirm}
                 >
                   Cancel
@@ -230,8 +261,8 @@ export function SavedSection({
               <Button
                 type="button"
                 size="sm"
-                variant="destructive"
-                className="ml-auto"
+                variant="ghost"
+                className="ml-auto h-7 px-2 text-xs text-destructive/85 hover:bg-destructive/10 hover:text-destructive"
                 disabled={saved.length === 0 || savingKey === "remove-all"}
                 onClick={startRemoveAllConfirm}
               >
@@ -240,9 +271,10 @@ export function SavedSection({
             )}
           </div>
         ) : null}
-      </CardHeader>
+      </div>
 
-      <CardContent className="flex min-h-0 flex-1 flex-col space-y-2 px-5">
+      {/* Body */}
+      <div className="flex min-h-0 flex-1 flex-col space-y-2">
         {savedError ? (
           <div
             role="alert"
@@ -253,87 +285,121 @@ export function SavedSection({
         ) : null}
 
         {savedLoading && saved.length === 0 ? (
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2" aria-label="Loading saved places">
+          <div
+            className="grid grid-cols-1 gap-2 @min-[420px]/saved:grid-cols-2"
+            aria-label="Loading saved places"
+          >
             {Array.from({ length: 4 }, (_, i) => (
-              <div key={i} className="space-y-2 rounded-lg border p-2.5">
-                <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
+              <div key={i} className="space-y-2 rounded-lg border border-border/50 p-2.5">
+                <div className="h-3.5 w-3/4 animate-pulse rounded bg-muted/70" />
                 <div className="flex items-center justify-between">
-                  <div className="h-5 w-16 animate-pulse rounded-full bg-muted" />
-                  <div className="h-6 w-14 animate-pulse rounded bg-muted" />
+                  <div className="h-4 w-16 animate-pulse rounded-md bg-muted/70" />
+                  <div className="h-5 w-10 animate-pulse rounded bg-muted/50" />
                 </div>
               </div>
             ))}
           </div>
         ) : saved.length === 0 ? (
-          <div className="rounded-lg border border-dashed px-4 py-8 text-center">
-            <p className="text-sm font-medium text-foreground/80">
-              {authed ? "No saved places yet" : "Sign in to save places"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {authed
-                ? "Click Save on any search result to build your shortlist."
-                : "Your saved places will appear here once signed in."}
-            </p>
-          </div>
+          <>
+            <div className="rounded-lg border border-dashed border-border/70 px-4 py-8 text-center">
+              <p className="text-sm font-medium text-foreground/85">
+                {authed ? "No saved places yet" : "Sign in to save places"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {authed
+                  ? "Click Save on any search result to build your shortlist."
+                  : "Your saved places will appear here once signed in."}
+              </p>
+            </div>
+            <div
+              aria-hidden="true"
+              className="mt-4 h-px w-full bg-border/60 @min-[900px]/workspace:hidden"
+            />
+          </>
         ) : (
           <>
-            <div className="relative xl:min-h-40 xl:flex-1">
+            <div className="relative @min-[900px]/workspace:min-h-64 @min-[900px]/workspace:flex-1">
               <div
                 ref={savedScrollRef}
                 className={
                   savedAtMax
-                    ? "overflow-y-auto xl:absolute xl:inset-0"
+                    ? "overflow-y-auto pr-1 @min-[900px]/workspace:absolute @min-[900px]/workspace:inset-0"
                     : savedHeight === null
-                    ? "max-h-64 overflow-y-auto xl:absolute xl:inset-0 xl:max-h-none"
-                    : "overflow-y-auto xl:absolute xl:inset-0"
+                    ? "max-h-64 overflow-y-auto pr-1 @min-[900px]/workspace:absolute @min-[900px]/workspace:inset-0 @min-[900px]/workspace:max-h-none"
+                    : "overflow-y-auto pr-1 @min-[900px]/workspace:absolute @min-[900px]/workspace:inset-0"
                 }
                 style={!savedAtMax && savedHeight !== null ? { maxHeight: `${savedHeight}px` } : undefined}
               >
                 <ul
                   ref={savedListRef}
-                  className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2"
+                  className="grid grid-cols-1 gap-2 @min-[420px]/saved:grid-cols-2"
                 >
-                  {saved.map((s) => (
-                    <li
-                      key={s.placeId}
-                      className={`rounded-lg border p-2.5 transition-colors hover:border-primary/40 hover:bg-accent/30 ${
-                        activeSelectedSavedIds.has(s.placeId) ? "border-primary/60 bg-primary/5" : ""
-                      }`}
-                    >
-                      <div className="flex flex-col gap-2">
-                        <label className="flex cursor-pointer items-start gap-2">
-                          <input
-                            type="checkbox"
-                            className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded accent-primary"
-                            checked={activeSelectedSavedIds.has(s.placeId)}
-                            onChange={() => onToggleSelect(s.placeId)}
-                            disabled={!authed}
-                            aria-label={`Select ${s.name}`}
-                          />
-                          <span className="line-clamp-2 text-sm font-medium leading-tight">
-                            {s.name}
-                          </span>
-                        </label>
-                        <div className="flex items-center justify-between gap-1">
-                          {s.category ? (
-                            <CategoryBadge category={s.category} className="text-xs" />
-                          ) : (
-                            <span />
-                          )}
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            className="h-6 px-2 text-xs"
-                            disabled={!authed || savingKey === `remove:${s.placeId}`}
-                            onClick={() => void onRemoveOne(s.placeId)}
-                          >
-                            Remove
-                          </Button>
+                  {saved.map((s) => {
+                    const mapsUrl = buildGoogleMapsPlaceUrl({
+                      name: s.name,
+                      address: s.address,
+                      lat: s.lat,
+                      lon: s.lon,
+                    });
+                    return (
+                      <li
+                        key={s.placeId}
+                        className={`group rounded-lg border p-2.5 transition-colors ${
+                          activeSelectedSavedIds.has(s.placeId)
+                            ? "border-primary/50 bg-primary/5"
+                            : "border-border/50 bg-transparent hover:border-border hover:bg-accent/25"
+                        }`}
+                      >
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-start gap-2">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 h-3.5 w-3.5 shrink-0 cursor-pointer rounded accent-primary"
+                              checked={activeSelectedSavedIds.has(s.placeId)}
+                              onChange={() => onToggleSelect(s.placeId)}
+                              disabled={!authed}
+                              aria-label={`Select ${s.name}`}
+                            />
+                            {mapsUrl ? (
+                              <a
+                                href={mapsUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title={`Open ${s.name} in Google Maps`}
+                                aria-label={`${s.name} — open in Google Maps (opens in a new tab)`}
+                                className="group/link inline-flex min-w-0 flex-1 items-start gap-1 text-[13px] font-medium leading-snug text-foreground underline-offset-2 transition-colors hover:text-primary hover:underline focus-visible:rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              >
+                                <span className="line-clamp-2">{s.name}</span>
+                                <ArrowUpRight
+                                  size={12}
+                                  strokeWidth={1.5}
+                                  aria-hidden="true"
+                                  className="mt-0.5 shrink-0 text-muted-foreground/60 transition-colors group-hover/link:text-primary"
+                                />
+                              </a>
+                            ) : (
+                              <span className="line-clamp-2 min-w-0 flex-1 text-[13px] font-medium leading-snug text-foreground">
+                                {s.name}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between gap-1.5">
+                            {s.category ? <CategoryBadge category={s.category} /> : <span />}
+                            <button
+                              type="button"
+                              disabled={!authed || savingKey === `remove:${s.placeId}`}
+                              onClick={() => void onRemoveOne(s.placeId)}
+                              aria-label={`Remove ${s.name}`}
+                              className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:pointer-events-none disabled:opacity-40"
+                            >
+                              <X size={12} strokeWidth={1.5} />
+                              Remove
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             </div>
@@ -343,13 +409,13 @@ export function SavedSection({
               role="separator"
               aria-orientation="horizontal"
               aria-label="Resize saved section"
-              className="group relative -mb-1 flex h-3 cursor-row-resize items-center xl:hidden"
+              className="group relative -mb-1 flex h-3 cursor-row-resize items-center @min-[900px]/workspace:hidden"
             >
-              <div className="h-px w-full bg-border transition-all group-hover:h-0.5 group-hover:bg-primary/60" />
+              <div className="h-px w-full bg-border/70 transition-all group-hover:h-0.5 group-hover:bg-primary/60" />
             </div>
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

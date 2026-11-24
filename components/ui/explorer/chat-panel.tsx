@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { type RefObject, useEffect, useMemo, useRef } from "react";
 import { Sparkles, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ type ChatPanelProps = {
   authed: boolean;
   savedCount: number;
   hasActiveItinerary: boolean;
+  closeBtnRef?: RefObject<HTMLButtonElement | null>;
   onInputChange: (value: string) => void;
   onSend: (overrideText?: string) => void;
   onClose?: () => void;
@@ -26,6 +27,7 @@ export function ChatPanel({
   authed,
   savedCount,
   hasActiveItinerary,
+  closeBtnRef,
   onInputChange,
   onSend,
   onClose,
@@ -55,19 +57,21 @@ export function ChatPanel({
   return (
     <div className="flex h-full flex-col">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-sm font-semibold">
-          <Sparkles size={14} className="text-primary" />
+        <p className="flex items-center gap-1.5 text-sm font-medium tracking-tight">
+          <Sparkles size={14} strokeWidth={1.5} className="text-primary" />
           Assistant
         </p>
         {onClose ? (
           <Button
+            ref={closeBtnRef}
             type="button"
             variant="ghost"
             size="icon-sm"
+            className="text-muted-foreground hover:text-foreground"
             onClick={onClose}
             aria-label="Close assistant"
           >
-            <X size={14} />
+            <X size={14} strokeWidth={1.5} />
           </Button>
         ) : null}
       </div>
@@ -87,7 +91,7 @@ export function ChatPanel({
                   type="button"
                   disabled={loading}
                   onClick={() => onSend(prompt)}
-                  className="rounded-full border border-border bg-muted/50 px-2.5 py-1 text-left text-xs text-foreground transition-colors hover:border-primary/50 hover:bg-accent disabled:pointer-events-none disabled:opacity-50"
+                  className="rounded-full border border-border/70 bg-card/80 px-2.5 py-1 text-left text-xs text-foreground transition-colors hover:border-primary/50 hover:bg-accent disabled:pointer-events-none disabled:opacity-50 dark:bg-muted/50"
                 >
                   {prompt}
                 </button>
@@ -103,7 +107,7 @@ export function ChatPanel({
                   ? "self-end bg-primary text-primary-foreground"
                   : m.isError
                   ? "self-start border border-destructive/30 bg-destructive/10 text-destructive"
-                  : "self-start bg-muted text-foreground"
+                  : "self-start bg-card text-foreground ring-1 ring-inset ring-border/60 dark:bg-muted dark:ring-0"
               }`}
             >
               {m.content}
@@ -112,7 +116,7 @@ export function ChatPanel({
         )}
 
         {loading ? (
-          <div className="self-start rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+          <div className="self-start rounded-lg bg-card px-3 py-2 text-sm text-muted-foreground ring-1 ring-inset ring-border/60 dark:bg-muted dark:ring-0">
             Thinking…
           </div>
         ) : null}

@@ -142,6 +142,7 @@ components/
   ui/explorer/
     app-sidebar.tsx             ← Collapsible left sidebar (section nav, trips switcher, & account dock)
     account-dock.tsx            ← Bottom-left account profile avatar, sign-in dock, & floating popover menu
+    brand-logo.tsx              ← Minimalist Waypoint Route SVG brand mark
     settings-dialog.tsx         ← Preferences modal (appearance, default trip days/stops) & Help/Shortcuts
     search-panel.tsx            ← Main workspace orchestrator & client state
     search-section.tsx          ← Discover places search, category filter chips, & results
@@ -154,6 +155,7 @@ lib/
   auth.ts                       ← NextAuth config (GitHub provider + Prisma adapter)
   db.ts                         ← Prisma client singleton
   itinerary-routing.ts          ← Geographic clustering, nearest-neighbour, & 2-opt path optimizer
+  maps-links.ts                 ← Zero-API-key Google Maps place & multi-stop day route URL builders
   preferences.ts                ← LocalStorage-backed user preferences store (useSyncExternalStore)
   redis.ts                      ← Optional Redis client (2s connect timeout, graceful fallback)
   theme.ts                      ← Shared light/dark/system theme store & live OS preference sync

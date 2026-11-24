@@ -1,29 +1,45 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
-// Full literal class strings (light + dark) so Tailwind's scanner includes them.
-const CATEGORY_BADGE_CLASSES: Record<string, string> = {
-  museums:
-    "bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:border-violet-900",
-  historic:
-    "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-900",
-  architecture:
-    "bg-cyan-100 text-cyan-700 border-cyan-200 dark:bg-cyan-950 dark:text-cyan-300 dark:border-cyan-900",
-  cultural:
-    "bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-950 dark:text-rose-300 dark:border-rose-900",
-  natural:
-    "bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-300 dark:border-emerald-900",
-  amusements:
-    "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-900",
-  religion:
-    "bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-900",
-  foods:
-    "bg-red-100 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-300 dark:border-red-900",
+const CATEGORY_ALIASES: Record<string, string> = {
+  view_points: "Viewpoints",
+  unclassified_objects: "Unclassified Objects",
+  interesting_places: "Interesting Places",
+  other_buildings_and_structures: "Buildings & Structures",
+  urban_environment: "Urban",
+  natural: "Nature",
+  foods: "Food & Drink",
 };
 
-const CATEGORY_FALLBACK_CLASS =
-  "bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700";
+// Full literal dot color classes (light + dark) so Tailwind's scanner includes them.
+const CATEGORY_DOT_CLASSES: Record<string, string> = {
+  museums: "bg-violet-500 dark:bg-violet-400",
+  historic: "bg-amber-500 dark:bg-amber-400",
+  architecture: "bg-cyan-500 dark:bg-cyan-400",
+  cultural: "bg-rose-500 dark:bg-rose-400",
+  natural: "bg-emerald-500 dark:bg-emerald-400",
+  amusements: "bg-orange-500 dark:bg-orange-400",
+  religion: "bg-indigo-500 dark:bg-indigo-400",
+  markets: "bg-teal-500 dark:bg-teal-400",
+  viewpoints: "bg-teal-500 dark:bg-teal-400",
+  foods: "bg-red-500 dark:bg-red-400",
+  restaurant: "bg-red-500 dark:bg-red-400",
+  attraction: "bg-teal-500 dark:bg-teal-400",
+};
+
+const CATEGORY_FALLBACK_DOT = "bg-slate-400 dark:bg-slate-500";
+
+export function formatCategoryLabel(raw: string): string {
+  const trimmed = raw.trim();
+  if (!trimmed) return "";
+  const key = trimmed.toLowerCase();
+  if (CATEGORY_ALIASES[key]) return CATEGORY_ALIASES[key];
+  return trimmed
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
 
 export function CategoryBadge({
   category,
@@ -32,11 +48,21 @@ export function CategoryBadge({
   category?: string | null;
   className?: string;
 }) {
-  if (!category) return null;
-  const colors = CATEGORY_BADGE_CLASSES[category.toLowerCase()] ?? CATEGORY_FALLBACK_CLASS;
+  if (!category?.trim()) return null;
+  const label = formatCategoryLabel(category);
+  const dotClass =
+    CATEGORY_DOT_CLASSES[category.trim().toLowerCase()] ?? CATEGORY_FALLBACK_DOT;
+
   return (
-    <Badge variant="outline" className={[colors, className].filter(Boolean).join(" ")}>
-      {category}
-    </Badge>
+    <span
+      title={label}
+      className={cn(
+        "inline-flex max-w-[136px] items-center gap-1.5 rounded-md bg-muted/45 px-2 py-0.5 text-[11px] font-medium text-muted-foreground ring-1 ring-inset ring-border/50",
+        className
+      )}
+    >
+      <span aria-hidden="true" className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotClass)} />
+      <span className="truncate">{label}</span>
+    </span>
   );
 }

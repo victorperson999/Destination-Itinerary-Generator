@@ -23,9 +23,9 @@ export default function RootLayout({children}: {children: React.ReactNode}) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script
-          // Apply the saved theme before paint to avoid a light/dark flash.
+          // Apply the saved theme & color palette before paint to avoid a visual flash.
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');var p=localStorage.getItem('theme-palette');if(p==='terracotta'||p==='twilight')document.documentElement.dataset.palette=p;}catch(e){}})();`,
           }}
         />
       </head>
