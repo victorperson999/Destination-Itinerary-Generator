@@ -6,8 +6,11 @@ import { HelpCircle, LogOut, Monitor, Moon, Settings, Sun, X } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
+  setThemePalette,
   setThemePreference,
+  THEME_PALETTES,
   type ThemePreference,
+  useThemePalette,
   useThemePreference,
 } from "@/lib/theme";
 import { UserAvatar } from "./account-dock";
@@ -41,6 +44,7 @@ export function SettingsDialog({
   onClose,
 }: SettingsDialogProps) {
   const themePreference = useThemePreference();
+  const themePalette = useThemePalette();
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   const titleId = useId();
   const isOpen = openTab !== null;
@@ -96,7 +100,7 @@ export function SettingsDialog({
             onClick={onClose}
             aria-label="Close dialog"
           >
-            <X size={16} />
+            <X size={15} strokeWidth={1.5} />
           </Button>
         </div>
 
@@ -117,7 +121,7 @@ export function SettingsDialog({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Settings size={13} />
+              <Settings size={13} strokeWidth={1.5} />
               Preferences
             </button>
             <button
@@ -130,7 +134,7 @@ export function SettingsDialog({
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <HelpCircle size={13} />
+              <HelpCircle size={13} strokeWidth={1.5} />
               Help &amp; shortcuts
             </button>
           </div>
@@ -168,8 +172,52 @@ export function SettingsDialog({
                             : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                         }`}
                       >
-                        <Icon size={14} />
+                        <Icon size={14} strokeWidth={1.5} />
                         {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Color theme */}
+              <div className="space-y-2">
+                <div>
+                  <p className="text-sm font-medium">Color theme</p>
+                  <p className="text-xs text-muted-foreground">
+                    Switch accent and surface tone across light and dark modes.
+                  </p>
+                </div>
+                <div
+                  role="group"
+                  aria-label="Color theme"
+                  className="grid grid-cols-3 gap-2"
+                >
+                  {THEME_PALETTES.map((opt) => {
+                    const active = themePalette === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        aria-pressed={active}
+                        onClick={() => setThemePalette(opt.value)}
+                        className={`flex flex-col items-center justify-center gap-1.5 rounded-lg border px-2 py-2.5 text-xs font-medium transition-colors ${
+                          active
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        }`}
+                      >
+                        <span className="flex items-center -space-x-1" aria-hidden="true">
+                          <span
+                            className="h-3.5 w-3.5 rounded-full ring-1 ring-border/70"
+                            style={{ backgroundColor: opt.lightSwatch }}
+                          />
+                          <span
+                            className="h-3.5 w-3.5 rounded-full ring-1 ring-background"
+                            style={{ backgroundColor: opt.accentSwatch }}
+                          />
+                        </span>
+                        <span>{opt.label}</span>
                       </button>
                     );
                   })}
@@ -282,7 +330,7 @@ export function SettingsDialog({
                       onClick={() => void signOut()}
                       className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                     >
-                      <LogOut size={14} />
+                      <LogOut size={14} strokeWidth={1.5} />
                       Log out
                     </Button>
                   </div>

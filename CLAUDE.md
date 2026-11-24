@@ -110,6 +110,7 @@ All protected API routes call `getServerSession(authOptions)` and extract `(sess
 - `app/layout.tsx` — root layout + no-flash theme boot script
 - `components/ui/explorer/search-panel.tsx` — workspace orchestrator & client state
 - `components/ui/explorer/app-sidebar.tsx` — collapsible left sidebar + mobile navigation drawer
+- `components/ui/explorer/brand-logo.tsx` — minimalist Waypoint Route SVG brand mark
 - `components/ui/explorer/account-dock.tsx` — bottom-left GitHub avatar, sign-in dock, and floating account menu
 - `components/ui/explorer/settings-dialog.tsx` — Preferences (appearance, default trip length/stops) & Help/Shortcuts modal
 - `components/ui/explorer/{search-section,saved-section,itinerary-section,chat-panel,category-badge,types}.tsx` — modular workspace sections
