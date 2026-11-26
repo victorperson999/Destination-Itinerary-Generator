@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Local Explorer — Travel Discovery &amp; Itinerary Planner</title>
+  <meta name="description" content="Discover local places, shortlist your favorites, and turn them into walkable day-by-day itineraries with an optional Gemini assistant.">
+  <meta property="og:title" content="Local Explorer — Travel Discovery &amp; Itinerary Planner">
+  <meta property="og:description" content="Discover local places, shortlist your favorites, and turn them into walkable day-by-day itineraries with an optional Gemini assistant.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://victorperson999.github.io/local-explorer-itinerary/">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <script>
+    (function () {
+      try {
+        var t = window.localStorage.getItem("local-explorer-site-theme");
+        if (t === "light" || t === "dark") {
+          document.documentElement.setAttribute("data-theme", t);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#hero">
+        <svg class="brand-mark" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="6" cy="17.5" r="2.1" />
+          <circle cx="18" cy="6.5" r="2.1" fill="currentColor" fill-opacity="0.22" />
+          <path d="M7.6 15.9C9.4 14.1 9.5 11.4 12 12C14.5 12.6 14.6 9.9 16.4 8.1" />
+          <circle cx="12" cy="12" r="1.15" fill="currentColor" stroke="none" />
+        </svg>
+        <span>Local <span class="brand-subtle">Explorer</span></span>
+      </a>
+
+      <nav class="site-nav" aria-label="Primary">
+        <a class="nav-anchor" href="#demo">Route Demo</a>
+        <a class="nav-anchor" href="#workflow">Workflow</a>
+        <a class="nav-anchor" href="#stack">Stack</a>
+        <a class="nav-anchor" href="#setup">Get Started</a>
+        <span class="nav-sep" aria-hidden="true"></span>
+        <a class="nav-ext" href="https://github.com/victorperson999/local-explorer-itinerary" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <button type="button" id="theme-toggle" class="theme-btn" aria-label="Switch to light theme" title="Switch to light theme">
+          <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+          </svg>
+          <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+          </svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section id="hero" class="hero">
+      <div class="container">
+        <p class="eyebrow">Travel Discovery &amp; Itinerary Planner</p>
+        <h1>Discover local places and turn them into walkable day-by-day itineraries.</h1>
+        <p class="hero-sub">
+          Search any city for landmarks, parks, museums, and local food — save your shortlist, group nearby spots by neighborhood, and open each day directly in Google Maps.
+        </p>
+
+        <div class="hero-actions">
+          <a class="btn-primary-link" href="#demo">Try the route preview &darr;</a>
+          <a class="btn-ghost-link" href="https://github.com/victorperson999/local-explorer-itinerary" target="_blank" rel="noopener noreferrer">View on GitHub &nearr;</a>
+        </div>
+
+        <p class="hero-note">
+          Open-source Next.js app — free to run locally with your own API keys. <a href="#setup">Get started</a>
+        </p>
+
+        <figure class="hero-figure">
+          <div class="destination-strip" role="group" aria-label="Featured sample destinations">
+            <button type="button" class="dest-card is-selected" data-select-city="kyoto" aria-pressed="true">
+              <img src="assets/city-kyoto.jpg" alt="Quiet early-morning stone lane in Kyoto's Higashiyama district leading toward a wooden pagoda against misty hills" width="900" height="600">
+              <span class="dest-overlay">
+                <span class="dest-kicker">Japan · 35.0°N</span>
+                <span class="dest-title-row">
+                  <span class="dest-name">Kyoto</span>
+                  <span class="dest-cta">15 spots &rarr;</span>
+                </span>
+              </span>
+            </button>
+
+            <button type="button" class="dest-card" data-select-city="lisbon" aria-pressed="false">
+              <img src="assets/city-lisbon.jpg" alt="Terracotta rooftops and pastel facades of Alfama overlooking the calm Tagus River in Lisbon" width="900" height="600">
+              <span class="dest-overlay">
+                <span class="dest-kicker">Portugal · 38.7°N</span>
+                <span class="dest-title-row">
+                  <span class="dest-name">Lisbon</span>
+                  <span class="dest-cta">15 spots &rarr;</span>
+                </span>
+              </span>
+            </button>
+
+            <button type="button" class="dest-card" data-select-city="paris" aria-pressed="false">
+              <img src="assets/city-paris.jpg" alt="Haussmann limestone architecture and an arched stone bridge reflecting twilight highlights along the Seine in Paris" width="900" height="600">
+              <span class="dest-overlay">
+                <span class="dest-kicker">France · 48.9°N</span>
+                <span class="dest-title-row">
+                  <span class="dest-name">Paris</span>
+                  <span class="dest-cta">15 spots &rarr;</span>
+                </span>
+              </span>
+            </button>
+          </div>
+          <figcaption>
+            Pick any city above to preview how Local Explorer groups saved places into neighborhood days right in your browser.
+          </figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="demo" class="section">
+      <div class="container">
+        <div class="section-head">
+          <p class="section-kicker">Route Preview</p>
+          <h2>Neighborhood Day Clustering</h2>
+          <p class="section-sub">
+            Groups nearby saved spots into distinct day zones and orders each day to minimize backtracking — powered by the same routing engine in <a href="https://github.com/victorperson999/local-explorer-itinerary/blob/main/lib/itinerary-routing.ts" target="_blank" rel="noopener noreferrer"><code>lib/itinerary-routing.ts</code></a>.
+          </p>
+        </div>
+
+        <form id="demo-form" class="demo-controls" novalidate>
+          <fieldset class="choice-group">
+            <legend>Destination</legend>
+            <div class="seg-group">
+              <label class="seg-option">
+                <input type="radio" name="city" value="kyoto" checked>
+                <span>Kyoto</span>
+              </label>
+              <label class="seg-option">
+                <input type="radio" name="city" value="lisbon">
+                <span>Lisbon</span>
+              </label>
+              <label class="seg-option">
+                <input type="radio" name="city" value="paris">
+                <span>Paris</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="choice-group">
+            <legend>Trip Length</legend>
+            <div class="seg-group">
+              <label class="seg-option">
+                <input type="radio" name="days" value="2">
+                <span>2 days</span>
+              </label>
+              <label class="seg-option">
+                <input type="radio" name="days" value="3" checked>
+                <span>3 days</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <fieldset class="choice-group">
+            <legend>Stops / Day</legend>
+            <div class="seg-group">
+              <label class="seg-option">
+                <input type="radio" name="perDay" value="3">
+                <span>3</span>
+              </label>
+              <label class="seg-option">
+                <input type="radio" name="perDay" value="4" checked>
+                <span>4</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="demo-actions">
+            <button type="button" id="btn-shuffle" class="btn-accent">Shuffle route</button>
+            <button type="button" id="btn-reset" class="btn-subtle">Reset</button>
+          </div>
+        </form>
+
+        <div class="demo-stage">
+          <div class="map-pane">
+            <div class="map-city-banner">
+              <img id="map-city-img" src="assets/city-kyoto.jpg" alt="Quiet early-morning stone lane in Kyoto's Higashiyama district leading toward a wooden pagoda against misty hills" width="900" height="600">
+              <div class="map-city-scrim">
+                <div>
+                  <p id="map-city-name" class="map-city-name">Kyoto, Japan</p>
+                  <p id="map-city-meta" class="map-city-meta">12 of 15 saved spots · 3 days</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="map-canvas-wrap">
+              <svg id="route-svg" class="route-svg" viewBox="0 0 460 310" role="group" aria-label="Interactive city map with clickable day-by-day stop pins"></svg>
+            </div>
+
+            <div class="map-footer">
+              <div class="map-footer-row">
+                <div id="map-legend" class="map-legend">
+                  <span class="legend-item"><span class="day-dot" style="background: var(--day-1)"></span>Day 1</span>
+                  <span class="legend-item"><span class="day-dot" style="background: var(--day-2)"></span>Day 2</span>
+                  <span class="legend-item"><span class="day-dot" style="background: var(--day-3)"></span>Day 3</span>
+                </div>
+                <span id="map-metric" class="map-metric">17.5 km total</span>
+              </div>
+              <p class="map-attribution">
+                Click any pin to open in Google Maps · Map data <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">&copy; OpenStreetMap contributors</a>
+              </p>
+            </div>
+          </div>
+
+          <div id="schedule-output" class="schedule-pane">
+            <div class="day-block">
+              <div class="day-head">
+                <div class="day-title">
+                  <span class="day-dot" style="background: var(--day-1)"></span>
+                  <span class="day-title-text">
+                    <span class="day-label">Day 1</span>
+                    <span class="day-meta">4 stops</span>
+                  </span>
+                </div>
+              </div>
+              <ul class="stop-list">
+                <li class="stop-row"><div class="stop-main"><span class="stop-idx">1</span><span class="stop-link">Arashiyama Bamboo Grove</span></div><span class="cat-badge">natural</span></li>
+                <li class="stop-row"><div class="stop-main"><span class="stop-idx">2</span><span class="stop-link">Tenryu-ji Temple</span></div><span class="cat-badge">religion</span></li>
+                <li class="stop-row"><div class="stop-main"><span class="stop-idx">3</span><span class="stop-link">Togetsukyo Bridge</span></div><span class="cat-badge">architecture</span></li>
+                <li class="stop-row"><div class="stop-main"><span class="stop-idx">4</span><span class="stop-link">Ryoan-ji Rock Garden</span></div><span class="cat-badge">religion</span></li>
+              </ul>
+            </div>
+            <noscript>
+              <p class="step-note">Enable JavaScript to switch cities, adjust trip length, shuffle routes, and open live Google Maps multi-stop directions.</p>
+            </noscript>
+          </div>
+        </div>
+
+        <p class="demo-footnote">
+          Click <strong>Shuffle route</strong> to try alternative day splits while keeping each day grouped in the same neighborhood. Any day link opens the full multi-stop route directly in Google Maps.
+        </p>
+      </div>
+    </section>
+
+    <section id="workflow" class="section">
+      <div class="container">
+        <div class="section-head">
+          <p class="section-kicker">Workflow</p>
+          <h2>From City Search to Walkable Days</h2>
+          <p class="section-sub">
+            One unified workspace connects place discovery, your Saved Locations shortlist, automatic route planning, and the Gemini assistant.
+          </p>
+        </div>
+
+        <div class="chamber-tabs" role="tablist" aria-label="Local Explorer workflow stages">
+          <button type="button" class="chamber-tab is-active" id="tab-stage-1" role="tab" aria-selected="true" aria-controls="panel-stage-1" tabindex="0">Discover</button>
+          <button type="button" class="chamber-tab" id="tab-stage-2" role="tab" aria-selected="false" aria-controls="panel-stage-2" tabindex="-1">Shortlist</button>
+          <button type="button" class="chamber-tab" id="tab-stage-3" role="tab" aria-selected="false" aria-controls="panel-stage-3" tabindex="-1">Auto-Route</button>
+          <button type="button" class="chamber-tab" id="tab-stage-4" role="tab" aria-selected="false" aria-controls="panel-stage-4" tabindex="-1">AI Assistant</button>
+        </div>
+
+        <div class="chamber-panels">
+          <div class="chamber-panel" id="panel-stage-1" role="tabpanel" aria-labelledby="tab-stage-1">
+            <h3>City &amp; Neighbourhood Search</h3>
+            <p>Search any city or neighborhood to pull curated attractions across a 15 km radius via OpenStreetMap Nominatim and OpenTripMap.</p>
+            <ul>
+              <li>Balances major sights and local eateries automatically (capping food spots at 20%) so restaurants never crowd out landmarks.</li>
+              <li>Filter results instantly across 10 categories: <code>Museums</code>, <code>Historic</code>, <code>Architecture</code>, <code>Cultural</code>, <code>Natural</code>, <code>Markets</code>, <code>Viewpoints</code>, <code>Amusements</code>, <code>Religion</code>, and <code>Foods</code>.</li>
+              <li>Caches recent city searches in PostgreSQL so repeat lookups feel instant.</li>
+            </ul>
+          </div>
+
+          <div class="chamber-panel" id="panel-stage-2" role="tabpanel" aria-labelledby="tab-stage-2" hidden>
+            <h3>Saved Locations &amp; Selective Shortlisting</h3>
+            <p>Bookmark places you want to visit into your personal Saved Locations list, then plan from everything you saved or just a checked subset.</p>
+            <ul>
+              <li>Pick specific places with checkboxes, Select All / Clear controls, and a safe two-step Remove All confirmation.</li>
+              <li>Resize the Saved Locations panel with a draggable divider when browsing long shortlists.</li>
+              <li>Jump straight to any landmark's Google Maps place card to check photos, hours, and reviews.</li>
+            </ul>
+          </div>
+
+          <div class="chamber-panel" id="panel-stage-3" role="tabpanel" aria-labelledby="tab-stage-3" hidden>
+            <h3>Walkable Day-by-Day Plans</h3>
+            <p>Turns an unordered shortlist of pins into contiguous neighborhood days without crisscrossing the city.</p>
+            <ul>
+              <li>Clusters places around the city center into contiguous day arcs, then orders each day with nearest-neighbour + 2-opt optimization to eliminate backtracking.</li>
+              <li>Move stops between days, reorder freely, attach personal notes, or shuffle for fresh combinations.</li>
+              <li>Opens any day's full multi-stop directions directly in Google Maps — with zero Maps API key required.</li>
+            </ul>
+          </div>
+
+          <div class="chamber-panel" id="panel-stage-4" role="tabpanel" aria-labelledby="tab-stage-4" hidden>
+            <h3>Gemini Trip Assistant</h3>
+            <p>A collapsible chat drawer powered by Google Gemini 2.5 Flash Lite lets you search destinations, spin up named trips, and regenerate schedules in plain language.</p>
+            <ul>
+              <li>Understands your current workspace — saved spots, selected checkboxes, and active trip — so requests like "fill my active trip with my selected spots" act accurately.</li>
+              <li>Triggers real workspace actions (searching cities, creating itineraries, generating routes) that update the UI immediately.</li>
+              <li>Works cleanly alongside manual planning, with light/dark mode and Coastal, Terracotta, and Twilight palettes.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="stack" class="section">
+      <div class="container">
+        <div class="section-head">
+          <p class="section-kicker">Stack</p>
+          <h2>Built With</h2>
+          <p class="section-sub">
+            A single-page Next.js workspace backed by PostgreSQL, OpenTripMap, and Google Gemini.
+          </p>
+        </div>
+
+        <table class="stack-table">
+          <thead>
+            <tr>
+              <th scope="col">Layer</th>
+              <th scope="col">Technology</th>
+              <th scope="col">Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Frontend</td>
+              <td><code>Next.js 16</code> · <code>React 19</code> · <code>TypeScript</code></td>
+              <td class="muted-cell">App Router workspace with SSR preload</td>
+            </tr>
+            <tr>
+              <td>Styling</td>
+              <td><code>Tailwind CSS v4</code> · <code>shadcn/ui</code></td>
+              <td class="muted-cell">Light/dark mode + Coastal, Terracotta &amp; Twilight palettes</td>
+            </tr>
+            <tr>
+              <td>Database</td>
+              <td><code>PostgreSQL</code> · <code>Prisma</code> · <code>Redis</code> (optional)</td>
+              <td class="muted-cell">Saved places, trips, and fast query caching</td>
+            </tr>
+            <tr>
+              <td>Auth</td>
+              <td><code>NextAuth.js v4</code> (GitHub OAuth)</td>
+              <td class="muted-cell">Personal saved lists and synced trips</td>
+            </tr>
+            <tr>
+              <td>Place Data</td>
+              <td><code>Nominatim</code> · <code>OpenTripMap</code></td>
+              <td class="muted-cell">City geocoding and curated attraction discovery</td>
+            </tr>
+            <tr>
+              <td>AI Assistant</td>
+              <td><code>Gemini 2.5 Flash Lite</code></td>
+              <td class="muted-cell">Natural-language search and itinerary generation</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="setup" class="section">
+      <div class="container">
+        <div class="section-head">
+          <p class="section-kicker">Get Started</p>
+          <h2>Run It Locally</h2>
+          <p class="section-sub">
+            Needs Node.js 20.9+, <code>pnpm</code>, Docker (for PostgreSQL), and free-tier keys for GitHub OAuth, OpenTripMap, and Google Gemini.
+          </p>
+        </div>
+
+        <div class="code-panel">
+          <div class="code-panel-bar">
+            <span class="code-panel-label">Quick start</span>
+            <button type="button" class="btn-copy" data-copy-target="cmd-quickstart">Copy</button>
+          </div>
+          <pre class="code-block"><code id="cmd-quickstart">git clone https://github.com/victorperson999/local-explorer-itinerary.git
+cd local-explorer-itinerary
+pnpm install
+# Add DATABASE_URL and API keys to .env.local (see README below)
+docker compose up -d
+pnpm prisma migrate dev &amp;&amp; pnpm dev</code></pre>
+        </div>
+
+        <p class="setup-readme-link">
+          See the <a href="https://github.com/victorperson999/local-explorer-itinerary/blob/main/README.md#getting-started" target="_blank" rel="noopener noreferrer">README setup guide &nearr;</a> for the <code>.env.local</code> template and optional Redis setup.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span>Local Explorer — Travel discovery &amp; itinerary planner</span>
+      <div class="footer-links">
+        <a href="https://github.com/victorperson999/local-explorer-itinerary" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <a href="https://github.com/victorperson999/local-explorer-itinerary/blob/main/README.md" target="_blank" rel="noopener noreferrer">README</a>
+        <a href="#hero">Back to top &uarr;</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

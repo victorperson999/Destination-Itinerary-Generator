@@ -182,7 +182,7 @@ export function ItinerarySection({
               <div className="flex flex-wrap items-center gap-2 border-b border-border/50 pb-3">
                 <select
                   aria-label="Active itinerary"
-                  className="h-8 min-w-44 flex-1 rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="h-8 min-w-44 flex-1 rounded-md border border-input bg-background px-2.5 text-[13px] text-foreground outline-none transition-[color,border-color] focus-visible:border-ring/80"
                   value={itineraryId ?? ""}
                   onChange={(e) => {
                     onSelectItinerary(e.target.value);
