@@ -343,7 +343,7 @@ export function SettingsDialog({
                 <p className="font-medium">How Local Explorer works</p>
                 <ol className="list-decimal space-y-1.5 pl-4 text-xs leading-relaxed text-muted-foreground">
                   <li>Search any city or neighbourhood in Discover Places and filter by category.</li>
-                  <li>Save places you like, then check specific items or use your full Saved list.</li>
+                  <li>Save places you like, then check specific items or use your full Saved Locations list.</li>
                   <li>
                     Create or pick a trip from the left sidebar, then click{" "}
                     <span className="font-medium text-foreground">Generate</span> to cluster stops

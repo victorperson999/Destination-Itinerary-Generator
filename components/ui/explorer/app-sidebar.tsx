@@ -140,7 +140,7 @@ function SidebarBody({
     badge?: number | null;
   }> = [
     { id: "discover", label: "Discover", icon: Compass },
-    { id: "saved", label: "Saved", icon: Bookmark, badge: authed ? savedCount : null },
+    { id: "saved", label: "Saved Locations", icon: Bookmark, badge: authed ? savedCount : null },
     { id: "itinerary", label: "Itinerary", icon: CalendarDays, badge: authed ? itineraryItemCount : null },
   ];
 

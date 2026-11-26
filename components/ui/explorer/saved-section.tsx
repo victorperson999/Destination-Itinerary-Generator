@@ -205,7 +205,7 @@ export function SavedSection({
         <div className="flex items-center justify-between gap-2">
           <h2 className="flex items-center gap-2 text-[13px] font-medium tracking-tight text-foreground">
             <Bookmark size={15} strokeWidth={1.5} className="text-muted-foreground" />
-            Saved
+            Saved Locations
             <span className="text-xs font-normal tabular-nums text-muted-foreground">
               {selectedSavedCount}/{saved.length} selected
             </span>
