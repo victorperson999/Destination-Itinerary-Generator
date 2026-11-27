@@ -197,7 +197,7 @@ export async function POST(req: Request) {
 
   const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_KEY);
   const model = genAI.getGenerativeModel({
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-3.5-flash-lite",
     systemInstruction,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tools: [{ functionDeclarations: functionDeclarations as any }],
@@ -206,27 +206,46 @@ export async function POST(req: Request) {
   const sideEffects: ChatSideEffect[] = [];
 
   try {
-    const chat = model.startChat({ history });
-    let result = await chat.sendMessage(lastMsg.content);
+    // Use model.generateContent with explicit contents rather than startChat():
+    // @google/generative-ai's ChatSession sends functionResponse with role:"function",
+    // which Gemini 3.5+ rejects (requiring role:"user" + preserving thoughtSignature on model parts).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const contents: any[] = [
+      ...history,
+      { role: "user", parts: [{ text: lastMsg.content }] },
+    ];
+    let result = await model.generateContent({ contents });
 
     // Function calling loop — max 5 iterations to prevent runaway tool chains
     for (let i = 0; i < 5; i++) {
+      const candidateContent = result.response.candidates?.[0]?.content;
       const calls = result.response.functionCalls();
-      if (!calls?.length) break;
+      if (!calls?.length || !candidateContent) break;
+
+      contents.push({ ...candidateContent, role: candidateContent.role || "model" });
 
       const parts = await Promise.all(
         calls.map(async (call) => {
           const args = (call.args ?? {}) as Record<string, unknown>;
           const response = await executeFunction(call.name, args, userId, sideEffects, ctx);
-          return { functionResponse: { name: call.name, response } };
+          const callId = (call as { id?: string }).id;
+          return {
+            functionResponse: {
+              name: call.name,
+              ...(callId ? { id: callId } : {}),
+              response,
+            },
+          };
         })
       );
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      result = await chat.sendMessage(parts as any);
+      contents.push({ role: "user", parts });
+      result = await model.generateContent({ contents });
     }
 
-    const text = result.response.text().trim();
+    // Trigger SDK safety/promptFeedback validation on the final response before extracting non-thought text
+    result.response.text();
+    const text = extractVisibleText(result.response);
     const message = text || buildFallbackMessage(sideEffects);
     return NextResponse.json({ message, sideEffects });
 
@@ -243,6 +262,20 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+}
+
+function extractVisibleText(response: {
+  candidates?: Array<{
+    content?: { parts?: Array<{ text?: string; thought?: boolean }> };
+  }>;
+}): string {
+  const parts = response.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return "";
+  return parts
+    .filter((p) => typeof p.text === "string" && !p.thought)
+    .map((p) => p.text)
+    .join("")
+    .trim();
 }
 
 function buildFallbackMessage(effects: ChatSideEffect[]): string {
