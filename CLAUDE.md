@@ -33,7 +33,7 @@ Required in `.env.local`:
 - `NEXTAUTH_URL` — callback URL (e.g. `http://localhost:3000`)
 - `NEXTAUTH_SECRET` — random secret for session signing
 - `OPENTRIPMAP_API_KEY` — OpenTripMap API key; used by `/api/places` for POI lookup
-- `GOOGLE_GENERATIVE_AI_KEY` — Google Generative AI key (Gemini 2.5 Flash Lite); powers `/api/chat`
+- `GOOGLE_GENERATIVE_AI_KEY` — Google Generative AI key (Gemini 3.5 Flash Lite); powers `/api/chat`
 - `REDIS_URL` (optional) — Redis URL (e.g. `redis://localhost:6379`); caching is silently skipped if unset
 
 ## Architecture
@@ -79,7 +79,7 @@ All routes under `app/api/` use `export const runtime = "nodejs"` and require au
 7. Body params: `mode` (`"replace"` | `"append"`), `perDay` (1–8, default 3), `shuffle` (bool), `placeIds` (optional string array). Response includes a `debug` block with `savedCount`, `eligibleCount`, `chosenCount` (post-trim total), `selectedCount`, `mode`, `perDay`, `shuffle`.
 
 ### Chat Assistant (`app/api/chat/route.ts`)
-Backed by Google Gemini 2.5 Flash Lite (`GOOGLE_GENERATIVE_AI_KEY`). The handler accepts `{ messages, context }` from the client and returns `{ message, sideEffects[] }`.
+Backed by Google Gemini 3.5 Flash Lite (`GOOGLE_GENERATIVE_AI_KEY`). The handler accepts `{ messages, context }` from the client and returns `{ message, sideEffects[] }`.
 
 - **Tools exposed to the LLM** (function calling, max 5-iteration loop): `search_city`, `create_itinerary`, `generate_itinerary`. Unauthenticated callers see only `search_city`.
 - **Context fields** sent by the client: `savedCount`, `selectedSavedCount`, `itineraryCount`, `activeItineraryId`, `activeItineraryTitle`. The system prompt embeds these and uses them to steer behavior.

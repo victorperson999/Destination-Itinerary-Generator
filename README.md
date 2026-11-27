@@ -10,7 +10,7 @@ A web app for discovering local points of interest and building day-by-day trave
 2. **Save** — bookmark places to your personal saved list, select specific subsets, and resize the saved panel.
 3. **Plan** — create named itineraries (e.g. "Tokyo Trip, 5 days") and manage stops across days.
 4. **Auto-generate** — cluster saved (or selected) places geographically into contiguous day arcs and build a per-day route using cosine-latitude-adjusted nearest-neighbour ordering refined with open-path 2-opt local search, with optional shuffling.
-5. **AI assistant** — a collapsible chat panel powered by Google Gemini 2.5 Flash Lite can search destinations, create itineraries, and trigger schedule generation via structured function calling.
+5. **AI assistant** — a collapsible chat panel powered by Google Gemini 3.5 Flash Lite can search destinations, create itineraries, and trigger schedule generation via structured function calling.
 
 ---
 
@@ -25,7 +25,7 @@ A web app for discovering local points of interest and building day-by-day trave
 | Cache | PostgreSQL (`PlacesQueryCache`, 6h TTL) + Redis (optional, short TTL) |
 | Auth | [NextAuth.js v4](https://next-auth.js.org/) — GitHub OAuth (database sessions) |
 | Place data | OpenStreetMap Nominatim (geocoding) + [OpenTripMap](https://opentripmap.io/) (POIs) |
-| AI chat | Google Gemini 2.5 Flash Lite (`@google/generative-ai`) |
+| AI chat | Google Gemini 3.5 Flash Lite (`@google/generative-ai`) |
 | Package manager | [pnpm](https://pnpm.io/) |
 
 ---
