@@ -7,9 +7,9 @@ const globalForPrisma = globalThis as unknown as {
     adapter?: PrismaPg;
 };
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL_POOLED ?? process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error("DATABASE_URL is missing. Check your .env / .env.local and restart `pnpm dev`.");
+  throw new Error("DATABASE_URL is missing. Check your .env / .env.local (or Vercel environment variables).");
 }
 
 const adapter = globalForPrisma.adapter ?? new PrismaPg({ connectionString });
